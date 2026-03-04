@@ -256,7 +256,20 @@ export type Database = {
         | "negotiating"
         | "signed"
         | "paused"
-      listing_area: "LIC" | "Manhattan" | "Jersey City" | "Long Island"
+      listing_area:
+        | "LIC"
+        | "Manhattan"
+        | "Jersey City"
+        | "Long Island"
+        | "Queens"
+        | "Flushing"
+        | "Brooklyn"
+        | "Bronx"
+        | "Staten Island"
+        | "Astoria"
+        | "Williamsburg"
+        | "Hoboken"
+        | "Other"
       listing_status: "active" | "inactive"
       listing_type: "company_exclusive" | "featured" | "agent_exclusive"
       promo_tag: "limited_offer" | "rare" | "new_development"
@@ -396,7 +409,21 @@ export const Constants = {
         "signed",
         "paused",
       ],
-      listing_area: ["LIC", "Manhattan", "Jersey City", "Long Island"],
+      listing_area: [
+        "LIC",
+        "Manhattan",
+        "Jersey City",
+        "Long Island",
+        "Queens",
+        "Flushing",
+        "Brooklyn",
+        "Bronx",
+        "Staten Island",
+        "Astoria",
+        "Williamsburg",
+        "Hoboken",
+        "Other",
+      ],
       listing_status: ["active", "inactive"],
       listing_type: ["company_exclusive", "featured", "agent_exclusive"],
       promo_tag: ["limited_offer", "rare", "new_development"],
