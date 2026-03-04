@@ -52,10 +52,19 @@ export default function Listings() {
           <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="Area" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Areas</SelectItem>
-            <SelectItem value="LIC">LIC</SelectItem>
             <SelectItem value="Manhattan">Manhattan</SelectItem>
+            <SelectItem value="LIC">LIC</SelectItem>
+            <SelectItem value="Queens">Queens</SelectItem>
+            <SelectItem value="Flushing">Flushing</SelectItem>
+            <SelectItem value="Brooklyn">Brooklyn</SelectItem>
             <SelectItem value="Jersey City">Jersey City</SelectItem>
             <SelectItem value="Long Island">Long Island</SelectItem>
+            <SelectItem value="Astoria">Astoria</SelectItem>
+            <SelectItem value="Williamsburg">Williamsburg</SelectItem>
+            <SelectItem value="Hoboken">Hoboken</SelectItem>
+            <SelectItem value="Bronx">Bronx</SelectItem>
+            <SelectItem value="Staten Island">Staten Island</SelectItem>
+            <SelectItem value="Other">Other</SelectItem>
           </SelectContent>
         </Select>
         <Select value={tagFilter} onValueChange={setTagFilter}>
