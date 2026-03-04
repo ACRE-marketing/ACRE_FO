@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, ToggleLeft, ToggleRight, Link as LinkIcon, Loader2, Check, X, Trash2 } from "lucide-react";
+import { Plus, Pencil, ToggleLeft, ToggleRight, Link as LinkIcon, Loader2, Check, X, Trash2, FileText, Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -31,6 +31,13 @@ const AREAS: { value: string; label: string }[] = [
 type ScrapedData = {
   title: string; cover_image: string | null; price: number | null;
   beds: number | null; baths: number | null; area: string | null; source_url: string;
+  address?: string | null; property_type?: string | null; sponsor?: string | null;
+  total_floors?: number | null; total_units?: number | null; completion_date?: string | null;
+  description?: string | null; transportation?: string | null; schools?: string | null;
+  views_description?: string | null; architecture?: string | null; interior_design?: string | null;
+  investment_info?: string | null; target_buyers?: string | null; area_info?: string | null;
+  summary?: string | null; highlights?: string[]; amenities?: string[];
+  unit_types?: Array<{ type: string; price: string }>;
 };
 
 type FormState = Partial<ListingInsert> & {
@@ -46,6 +53,7 @@ export default function AdminListings() {
   const [step, setStep] = useState<"url" | "review">("url");
   const [sourceUrl, setSourceUrl] = useState("");
   const [scraping, setScraping] = useState(false);
+  const [parsing, setParsing] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [newHighlight, setNewHighlight] = useState("");
   const [newAmenity, setNewAmenity] = useState("");
@@ -71,25 +79,68 @@ export default function AdminListings() {
     },
   });
 
+  const applyScrapedData = (scraped: ScrapedData) => {
+    setForm((f) => ({
+      ...f,
+      title: scraped.title || f.title || "",
+      source_url: scraped.source_url || f.source_url || "",
+      cover_image: scraped.cover_image || f.cover_image || "",
+      price: scraped.price ?? f.price ?? undefined,
+      beds: scraped.beds ?? f.beds ?? undefined,
+      baths: scraped.baths ?? f.baths ?? undefined,
+      area: (scraped.area as any) || f.area || "Manhattan",
+      address: scraped.address || f.address || "",
+      property_type: scraped.property_type || f.property_type || "",
+      sponsor: scraped.sponsor || f.sponsor || "",
+      total_floors: scraped.total_floors ?? f.total_floors ?? undefined,
+      total_units: scraped.total_units ?? f.total_units ?? undefined,
+      completion_date: scraped.completion_date || f.completion_date || "",
+      description: scraped.description || f.description || "",
+      transportation: scraped.transportation || f.transportation || "",
+      schools: scraped.schools || f.schools || "",
+      views_description: scraped.views_description || f.views_description || "",
+      architecture: scraped.architecture || f.architecture || "",
+      interior_design: scraped.interior_design || f.interior_design || "",
+      investment_info: scraped.investment_info || f.investment_info || "",
+      target_buyers: scraped.target_buyers || f.target_buyers || "",
+      area_info: scraped.area_info || f.area_info || "",
+      summary: scraped.summary || f.summary || "",
+      highlights_list: scraped.highlights?.length ? scraped.highlights : f.highlights_list || [],
+      amenities_list: scraped.amenities?.length ? scraped.amenities : f.amenities_list || [],
+      unit_types_list: scraped.unit_types?.length ? scraped.unit_types : f.unit_types_list || [],
+    }));
+  };
+
   const handleScrape = async () => {
     if (!sourceUrl.trim()) { toast.error("请输入链接"); return; }
     setScraping(true);
     try {
       const { data, error } = await supabase.functions.invoke("scrape-listing", { body: { url: sourceUrl.trim() } });
       if (error) throw error;
-      const scraped = data as ScrapedData;
-      setForm((f) => ({
-        ...f,
-        title: scraped.title || "", source_url: scraped.source_url,
-        cover_image: scraped.cover_image || "", price: scraped.price ?? undefined,
-        beds: scraped.beds ?? undefined, baths: scraped.baths ?? undefined,
-        area: (scraped.area as any) || "Manhattan",
-      }));
+      applyScrapedData(data as ScrapedData);
       setStep("review");
-      toast.success("信息抓取成功，请审核并补充详细信息");
+      toast.success("AI 已自动提取所有信息，请审核");
     } catch (err: any) {
       toast.error("抓取失败: " + (err.message || "Unknown error"));
     } finally { setScraping(false); }
+  };
+
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setParsing(true);
+    try {
+      const text = await file.text();
+      const { data, error } = await supabase.functions.invoke("scrape-listing", {
+        body: { document_content: text },
+      });
+      if (error) throw error;
+      applyScrapedData(data as ScrapedData);
+      setStep("review");
+      toast.success("文档解析完成，信息已自动填入");
+    } catch (err: any) {
+      toast.error("文档解析失败: " + (err.message || "Unknown error"));
+    } finally { setParsing(false); }
   };
 
   const saveMutation = useMutation({
@@ -207,17 +258,34 @@ export default function AdminListings() {
             {step === "url" && !editId && (
               <div className="space-y-4 mt-2">
                 <div>
-                  <Label>房源链接</Label>
+                  <Label>方式一：粘贴房源链接</Label>
                   <div className="flex gap-2 mt-1">
                     <div className="relative flex-1">
                       <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://www.zillow.com/..." className="pl-9" />
                     </div>
                     <Button onClick={handleScrape} disabled={scraping || !sourceUrl.trim()}>
-                      {scraping ? <Loader2 className="w-4 h-4 animate-spin" /> : "抓取"}
+                      {scraping ? <><Loader2 className="w-4 h-4 animate-spin mr-1" />AI 提取中...</> : "抓取"}
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1.5">粘贴外部房源链接，系统会自动提取基本信息</p>
+                  <p className="text-xs text-muted-foreground mt-1.5">AI 会自动从链接中提取所有房源详细信息</p>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">或者</span></div>
+                </div>
+
+                <div>
+                  <Label>方式二：上传销售包文档</Label>
+                  <label className="mt-1 flex items-center justify-center gap-2 px-4 py-8 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 hover:bg-accent/30 transition-colors">
+                    <input type="file" className="hidden" accept=".md,.txt,.doc,.docx,.pdf" onChange={handleDocumentUpload} disabled={parsing} />
+                    {parsing ? (
+                      <><Loader2 className="w-5 h-5 animate-spin text-primary" /><span className="text-sm text-muted-foreground">AI 正在解析文档...</span></>
+                    ) : (
+                      <><Upload className="w-5 h-5 text-muted-foreground" /><span className="text-sm text-muted-foreground">点击上传 .md / .txt 文件，AI 自动提取信息</span></>
+                    )}
+                  </label>
                 </div>
               </div>
             )}
