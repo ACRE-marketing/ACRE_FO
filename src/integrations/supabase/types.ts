@@ -116,52 +116,109 @@ export type Database = {
       }
       listings: {
         Row: {
+          address: string | null
+          amenities: Json | null
+          architecture: string | null
           area: Database["public"]["Enums"]["listing_area"]
+          area_info: string | null
           baths: number | null
           beds: number | null
+          completion_date: string | null
           cover_image: string | null
           created_at: string
           created_by: string | null
+          description: string | null
+          highlights: Json | null
           id: string
+          interior_design: string | null
+          investment_info: string | null
           listing_type: Database["public"]["Enums"]["listing_type"]
           price: number | null
           promo_tag: Database["public"]["Enums"]["promo_tag"] | null
+          property_type: string | null
+          schools: string | null
           source_url: string | null
+          sponsor: string | null
           status: Database["public"]["Enums"]["listing_status"]
+          summary: string | null
+          target_buyers: string | null
           title: string
+          total_floors: number | null
+          total_units: number | null
+          transportation: string | null
+          unit_types: Json | null
           updated_at: string
+          views_description: string | null
         }
         Insert: {
+          address?: string | null
+          amenities?: Json | null
+          architecture?: string | null
           area?: Database["public"]["Enums"]["listing_area"]
+          area_info?: string | null
           baths?: number | null
           beds?: number | null
+          completion_date?: string | null
           cover_image?: string | null
           created_at?: string
           created_by?: string | null
+          description?: string | null
+          highlights?: Json | null
           id?: string
+          interior_design?: string | null
+          investment_info?: string | null
           listing_type?: Database["public"]["Enums"]["listing_type"]
           price?: number | null
           promo_tag?: Database["public"]["Enums"]["promo_tag"] | null
+          property_type?: string | null
+          schools?: string | null
           source_url?: string | null
+          sponsor?: string | null
           status?: Database["public"]["Enums"]["listing_status"]
+          summary?: string | null
+          target_buyers?: string | null
           title: string
+          total_floors?: number | null
+          total_units?: number | null
+          transportation?: string | null
+          unit_types?: Json | null
           updated_at?: string
+          views_description?: string | null
         }
         Update: {
+          address?: string | null
+          amenities?: Json | null
+          architecture?: string | null
           area?: Database["public"]["Enums"]["listing_area"]
+          area_info?: string | null
           baths?: number | null
           beds?: number | null
+          completion_date?: string | null
           cover_image?: string | null
           created_at?: string
           created_by?: string | null
+          description?: string | null
+          highlights?: Json | null
           id?: string
+          interior_design?: string | null
+          investment_info?: string | null
           listing_type?: Database["public"]["Enums"]["listing_type"]
           price?: number | null
           promo_tag?: Database["public"]["Enums"]["promo_tag"] | null
+          property_type?: string | null
+          schools?: string | null
           source_url?: string | null
+          sponsor?: string | null
           status?: Database["public"]["Enums"]["listing_status"]
+          summary?: string | null
+          target_buyers?: string | null
           title?: string
+          total_floors?: number | null
+          total_units?: number | null
+          transportation?: string | null
+          unit_types?: Json | null
           updated_at?: string
+          views_description?: string | null
         }
         Relationships: []
       }
