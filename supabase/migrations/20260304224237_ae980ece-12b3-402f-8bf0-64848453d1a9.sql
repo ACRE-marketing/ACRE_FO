@@ -1,0 +1,21 @@
+
+ALTER TABLE public.listings
+  ADD COLUMN IF NOT EXISTS address text,
+  ADD COLUMN IF NOT EXISTS description text,
+  ADD COLUMN IF NOT EXISTS property_type text,
+  ADD COLUMN IF NOT EXISTS sponsor text,
+  ADD COLUMN IF NOT EXISTS total_floors integer,
+  ADD COLUMN IF NOT EXISTS total_units integer,
+  ADD COLUMN IF NOT EXISTS completion_date text,
+  ADD COLUMN IF NOT EXISTS transportation text,
+  ADD COLUMN IF NOT EXISTS schools text,
+  ADD COLUMN IF NOT EXISTS views_description text,
+  ADD COLUMN IF NOT EXISTS architecture text,
+  ADD COLUMN IF NOT EXISTS interior_design text,
+  ADD COLUMN IF NOT EXISTS unit_types jsonb DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS amenities jsonb DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS highlights jsonb DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS investment_info text,
+  ADD COLUMN IF NOT EXISTS target_buyers text,
+  ADD COLUMN IF NOT EXISTS area_info text,
+  ADD COLUMN IF NOT EXISTS summary text;
