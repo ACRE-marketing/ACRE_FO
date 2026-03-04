@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 serve(async (req) => {
@@ -19,71 +19,68 @@ serve(async (req) => {
       });
     }
 
-    // Fetch the page
-    const response = await fetch(url, {
+    const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: 'Firecrawl not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    let formattedUrl = url.trim();
+    if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+      formattedUrl = `https://${formattedUrl}`;
+    }
+
+    console.log('Scraping URL via Firecrawl:', formattedUrl);
+
+    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        url: formattedUrl,
+        formats: ['markdown'],
+        onlyMainContent: true,
+      }),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      return new Response(JSON.stringify({ error: `Failed to fetch URL: ${response.status}` }), {
+      console.error('Firecrawl error:', data);
+      return new Response(JSON.stringify({ error: data.error || 'Scrape failed' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const html = await response.text();
+    // Extract metadata from Firecrawl response
+    const metadata = data.data?.metadata || data.metadata || {};
+    const markdown = data.data?.markdown || data.markdown || '';
+    const ogImage = metadata.ogImage || metadata.image || null;
+    const pageTitle = metadata.ogTitle || metadata.title || '';
 
-    // Extract metadata from HTML using regex
-    const getMetaContent = (property: string): string | null => {
-      // Try og: tags first
-      const ogMatch = html.match(new RegExp(`<meta[^>]*property=["']og:${property}["'][^>]*content=["']([^"']*)["']`, 'i'))
-        || html.match(new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*property=["']og:${property}["']`, 'i'));
-      if (ogMatch) return ogMatch[1];
+    // Parse details from markdown + metadata
+    const fullText = `${pageTitle} ${metadata.description || ''} ${markdown}`.toLowerCase();
 
-      // Try name tags
-      const nameMatch = html.match(new RegExp(`<meta[^>]*name=["']${property}["'][^>]*content=["']([^"']*)["']`, 'i'))
-        || html.match(new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*name=["']${property}["']`, 'i'));
-      if (nameMatch) return nameMatch[1];
-
-      return null;
-    };
-
-    // Extract title
-    const ogTitle = getMetaContent('title');
-    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-    const title = ogTitle || (titleMatch ? titleMatch[1].trim() : '');
-
-    // Extract image
-    const ogImage = getMetaContent('image');
-    const image = ogImage || null;
-
-    // Extract description for parsing details
-    const description = getMetaContent('description') || '';
-    const fullText = `${title} ${description}`.toLowerCase();
-
-    // Try to extract price - look for $ followed by numbers
+    // Extract price
     let price: number | null = null;
     const pricePatterns = [
-      /\$\s?([\d,]+(?:\.\d+)?)\s*(?:\/\s*(?:mo|month))?/i,
+      /\$\s?([\d,]+(?:\.\d+)?)/i,
       /price[:\s]*\$?\s?([\d,]+)/i,
-      /(\d{1,3}(?:,\d{3})+)\s*(?:\/\s*(?:mo|month))?/i,
     ];
     for (const pattern of pricePatterns) {
-      const match = fullText.match(pattern) || title.match(pattern) || description.match(pattern);
+      const match = fullText.match(pattern);
       if (match) {
         const parsed = parseFloat(match[1].replace(/,/g, ''));
-        if (parsed > 100) { // reasonable price
-          price = parsed;
-          break;
-        }
+        if (parsed > 100) { price = parsed; break; }
       }
     }
 
-    // Try to extract beds/baths
+    // Extract beds/baths
     let beds: number | null = null;
     let baths: number | null = null;
     const bedMatch = fullText.match(/(\d+)\s*(?:bed|br|bedroom)/i);
@@ -91,36 +88,38 @@ serve(async (req) => {
     const bathMatch = fullText.match(/(\d+(?:\.\d+)?)\s*(?:bath|ba|bathroom)/i);
     if (bathMatch) baths = parseFloat(bathMatch[1]);
 
-    // Try to detect area from known NYC areas
-    const areas = [
-      'LIC', 'Long Island City', 'Manhattan', 'Jersey City', 'Long Island',
-      'Queens', 'Flushing', 'Brooklyn', 'Bronx', 'Staten Island',
-      'Astoria', 'Williamsburg', 'Hoboken'
+    // Detect area
+    const areaMap: [string, string][] = [
+      ['long island city', 'LIC'], ['lic', 'LIC'],
+      ['manhattan', 'Manhattan'], ['jersey city', 'Jersey City'],
+      ['long island', 'Long Island'], ['queens', 'Queens'],
+      ['flushing', 'Flushing'], ['brooklyn', 'Brooklyn'],
+      ['bronx', 'Bronx'], ['staten island', 'Staten Island'],
+      ['astoria', 'Astoria'], ['williamsburg', 'Williamsburg'],
+      ['hoboken', 'Hoboken'], ['fort lee', 'Jersey City'],
     ];
     let area: string | null = null;
-    for (const a of areas) {
-      if (fullText.includes(a.toLowerCase())) {
-        // Map to enum values
-        if (a === 'Long Island City') area = 'LIC';
-        else area = a;
-        break;
-      }
+    for (const [keyword, value] of areaMap) {
+      if (fullText.includes(keyword)) { area = value; break; }
     }
 
     const result = {
-      title: title.substring(0, 200),
-      cover_image: image,
+      title: pageTitle.substring(0, 200),
+      cover_image: ogImage,
       price,
       beds,
       baths,
       area,
-      source_url: url,
+      source_url: formattedUrl,
     };
+
+    console.log('Scrape result:', JSON.stringify(result));
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    console.error('Error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
