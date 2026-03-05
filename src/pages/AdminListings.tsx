@@ -324,15 +324,16 @@ export default function AdminListings() {
                 </div>
 
                 <div>
-                  <Label>方式二：上传销售包文档</Label>
+                  <Label>方式二：上传销售文档（支持多文件）</Label>
                   <label className="mt-1 flex items-center justify-center gap-2 px-4 py-8 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 hover:bg-accent/30 transition-colors">
-                    <input type="file" className="hidden" accept=".md,.txt,.doc,.docx,.pdf" onChange={handleDocumentUpload} disabled={parsing} />
+                    <input type="file" className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.md,.txt,.csv,.html,.png,.jpg,.jpeg,.webp" multiple onChange={handleDocumentUpload} disabled={parsing} />
                     {parsing ? (
                       <><Loader2 className="w-5 h-5 animate-spin text-primary" /><span className="text-sm text-muted-foreground">AI 正在解析文档...</span></>
                     ) : (
-                      <><Upload className="w-5 h-5 text-muted-foreground" /><span className="text-sm text-muted-foreground">点击上传 .md / .txt 文件，AI 自动提取信息</span></>
+                      <><Upload className="w-5 h-5 text-muted-foreground" /><span className="text-sm text-muted-foreground">支持 PDF、Word、Excel、PPT、图片、TXT 等格式，可多选</span></>
                     )}
                   </label>
+                  <p className="text-xs text-muted-foreground mt-1">多次上传会自动合并补充信息，不会覆盖已有内容</p>
                 </div>
               </div>
             )}
