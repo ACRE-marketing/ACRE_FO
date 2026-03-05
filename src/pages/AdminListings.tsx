@@ -163,15 +163,13 @@ export default function AdminListings() {
           const text = await file.text();
           body = { document_content: text };
         } else {
-          // Binary file: convert to base64
-          const buffer = await file.arrayBuffer();
-          const bytes = new Uint8Array(buffer);
-          let binary = '';
-          for (let j = 0; j < bytes.byteLength; j++) {
-            binary += String.fromCharCode(bytes[j]);
-          }
-          const base64 = btoa(binary);
-          body = { file_base64: base64, file_type: ext };
+          // Binary file: upload to storage, pass path to edge function
+          const filePath = `temp/${crypto.randomUUID()}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from('listing-docs')
+            .upload(filePath, file);
+          if (uploadError) throw uploadError;
+          body = { storage_path: filePath, file_type: ext };
         }
 
         toast.info(`正在解析: ${file.name} (${i + 1}/${files.length})`);
@@ -185,7 +183,6 @@ export default function AdminListings() {
       toast.error("文档解析失败: " + (err.message || "Unknown error"));
     } finally {
       setParsing(false);
-      // Reset input so same file can be re-uploaded
       e.target.value = '';
     }
   };
