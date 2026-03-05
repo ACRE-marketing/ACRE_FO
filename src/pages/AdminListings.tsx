@@ -488,7 +488,8 @@ export default function AdminListings() {
                     )}
                   </div>
                 </TabsContent>
-              </Tabs>
+                </Tabs>
+              </div>
             )}
 
             {step === "review" && (
