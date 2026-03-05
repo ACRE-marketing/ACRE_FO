@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -166,7 +167,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { url, document_content, file_base64, file_type } = body;
+    const { url, document_content, storage_path, file_type } = body;
 
     let markdown = '';
     let ogImage: string | null = null;
@@ -215,17 +216,46 @@ serve(async (req) => {
       console.log('Scraped markdown length:', markdown.length);
     }
 
-    // Mode 2: Binary file (PDF, Word, images, etc.)
-    if (file_base64 && file_type) {
+    // Mode 2: Binary file from Storage (PDF, Word, images, etc.)
+    if (storage_path && file_type) {
       const ext = file_type.toLowerCase();
       const mimeType = MIME_MAP[ext] || `application/${ext}`;
 
-      console.log('Processing binary file, type:', ext, 'size:', file_base64.length);
+      console.log('Downloading file from storage:', storage_path, 'type:', ext);
+
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const sb = createClient(supabaseUrl, supabaseKey);
+
+      const { data: fileData, error: dlError } = await sb.storage
+        .from('listing-docs')
+        .download(storage_path);
+
+      if (dlError || !fileData) {
+        console.error('Storage download error:', dlError);
+        return new Response(JSON.stringify({ error: 'Failed to download file from storage' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Convert to base64
+      const arrayBuffer = await fileData.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+
+      console.log('File downloaded, base64 length:', base64.length);
 
       const extracted = await extractWithAI(
         document_content || '',
-        { base64: file_base64, mimeType }
+        { base64, mimeType }
       );
+
+      // Clean up temp file
+      await sb.storage.from('listing-docs').remove([storage_path]).catch(() => {});
 
       if (extracted) {
         const result = buildResult(extracted, ogImage, sourceUrl, pageTitle);
