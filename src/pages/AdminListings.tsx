@@ -79,36 +79,55 @@ export default function AdminListings() {
     },
   });
 
+  // Merge mode: new data fills empty fields, arrays get merged (deduplicated)
   const applyScrapedData = (scraped: ScrapedData) => {
-    setForm((f) => ({
-      ...f,
-      title: scraped.title || f.title || "",
-      source_url: scraped.source_url || f.source_url || "",
-      cover_image: scraped.cover_image || f.cover_image || "",
-      price: scraped.price ?? f.price ?? undefined,
-      beds: scraped.beds ?? f.beds ?? undefined,
-      baths: scraped.baths ?? f.baths ?? undefined,
-      area: (scraped.area as any) || f.area || "Manhattan",
-      address: scraped.address || f.address || "",
-      property_type: scraped.property_type || f.property_type || "",
-      sponsor: scraped.sponsor || f.sponsor || "",
-      total_floors: scraped.total_floors ?? f.total_floors ?? undefined,
-      total_units: scraped.total_units ?? f.total_units ?? undefined,
-      completion_date: scraped.completion_date || f.completion_date || "",
-      description: scraped.description || f.description || "",
-      transportation: scraped.transportation || f.transportation || "",
-      schools: scraped.schools || f.schools || "",
-      views_description: scraped.views_description || f.views_description || "",
-      architecture: scraped.architecture || f.architecture || "",
-      interior_design: scraped.interior_design || f.interior_design || "",
-      investment_info: scraped.investment_info || f.investment_info || "",
-      target_buyers: scraped.target_buyers || f.target_buyers || "",
-      area_info: scraped.area_info || f.area_info || "",
-      summary: scraped.summary || f.summary || "",
-      highlights_list: scraped.highlights?.length ? scraped.highlights : f.highlights_list || [],
-      amenities_list: scraped.amenities?.length ? scraped.amenities : f.amenities_list || [],
-      unit_types_list: scraped.unit_types?.length ? scraped.unit_types : f.unit_types_list || [],
-    }));
+    setForm((f) => {
+      const mergeStr = (newVal: string | null | undefined, oldVal: string | undefined) =>
+        newVal && newVal.trim() ? (oldVal && oldVal.trim() ? `${oldVal}\n\n${newVal}` : newVal) : oldVal || "";
+      const mergeStrReplace = (newVal: string | null | undefined, oldVal: string | undefined) =>
+        newVal && newVal.trim() ? newVal : oldVal || "";
+
+      const mergeArr = (newArr: string[] | undefined, oldArr: string[] | undefined) => {
+        const combined = [...(oldArr || []), ...(newArr || [])];
+        return [...new Set(combined)];
+      };
+      const mergeUnitTypes = (newArr: Array<{type:string;price:string}> | undefined, oldArr: Array<{type:string;price:string}> | undefined) => {
+        const map = new Map<string, string>();
+        for (const u of (oldArr || [])) map.set(u.type, u.price);
+        for (const u of (newArr || [])) map.set(u.type, u.price);
+        return Array.from(map.entries()).map(([type, price]) => ({ type, price }));
+      };
+
+      return {
+        ...f,
+        title: mergeStrReplace(scraped.title, f.title),
+        source_url: scraped.source_url || f.source_url || "",
+        cover_image: scraped.cover_image || f.cover_image || "",
+        price: scraped.price ?? f.price ?? undefined,
+        beds: scraped.beds ?? f.beds ?? undefined,
+        baths: scraped.baths ?? f.baths ?? undefined,
+        area: (scraped.area as any) || f.area || "Manhattan",
+        address: mergeStrReplace(scraped.address, f.address),
+        property_type: mergeStrReplace(scraped.property_type, f.property_type),
+        sponsor: mergeStrReplace(scraped.sponsor, f.sponsor),
+        total_floors: scraped.total_floors ?? f.total_floors ?? undefined,
+        total_units: scraped.total_units ?? f.total_units ?? undefined,
+        completion_date: mergeStrReplace(scraped.completion_date, f.completion_date),
+        description: mergeStr(scraped.description, f.description),
+        transportation: mergeStr(scraped.transportation, f.transportation),
+        schools: mergeStr(scraped.schools, f.schools),
+        views_description: mergeStr(scraped.views_description, f.views_description),
+        architecture: mergeStr(scraped.architecture, f.architecture),
+        interior_design: mergeStr(scraped.interior_design, f.interior_design),
+        investment_info: mergeStr(scraped.investment_info, f.investment_info),
+        target_buyers: mergeStr(scraped.target_buyers, f.target_buyers),
+        area_info: mergeStr(scraped.area_info, f.area_info),
+        summary: mergeStrReplace(scraped.summary, f.summary),
+        highlights_list: mergeArr(scraped.highlights, f.highlights_list),
+        amenities_list: mergeArr(scraped.amenities, f.amenities_list),
+        unit_types_list: mergeUnitTypes(scraped.unit_types, f.unit_types_list),
+      };
+    });
   };
 
   const handleScrape = async () => {
