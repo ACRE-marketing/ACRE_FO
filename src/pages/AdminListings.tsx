@@ -339,12 +339,20 @@ export default function AdminListings() {
             )}
 
             {step === "review" && (
-              <Tabs defaultValue="basic" className="mt-2">
-                <TabsList className="w-full">
-                  <TabsTrigger value="basic" className="flex-1">基本信息</TabsTrigger>
-                  <TabsTrigger value="details" className="flex-1">详细描述</TabsTrigger>
-                  <TabsTrigger value="units" className="flex-1">户型 & 配套</TabsTrigger>
-                </TabsList>
+              <div className="space-y-2 mt-2">
+                <Tabs defaultValue="basic">
+                  <div className="flex items-center justify-between mb-2">
+                    <TabsList>
+                      <TabsTrigger value="basic">基本信息</TabsTrigger>
+                      <TabsTrigger value="details">详细描述</TabsTrigger>
+                      <TabsTrigger value="units">户型 & 配套</TabsTrigger>
+                    </TabsList>
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border rounded-md cursor-pointer hover:bg-accent/50 transition-colors">
+                      <input type="file" className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.md,.txt,.csv,.html,.png,.jpg,.jpeg,.webp" multiple onChange={handleDocumentUpload} disabled={parsing} />
+                      {parsing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                      <span>{parsing ? "解析中..." : "补充上传文档"}</span>
+                    </label>
+                  </div>
 
                 {/* Tab 1: Basic Info */}
                 <TabsContent value="basic" className="space-y-3 mt-3">
