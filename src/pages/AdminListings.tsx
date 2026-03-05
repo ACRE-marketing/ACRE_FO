@@ -144,22 +144,50 @@ export default function AdminListings() {
     } finally { setScraping(false); }
   };
 
+  const TEXT_EXTENSIONS = ['md', 'txt', 'csv', 'html', 'htm'];
+
   const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     setParsing(true);
+
     try {
-      const text = await file.text();
-      const { data, error } = await supabase.functions.invoke("scrape-listing", {
-        body: { document_content: text },
-      });
-      if (error) throw error;
-      applyScrapedData(data as ScrapedData);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const ext = file.name.split('.').pop()?.toLowerCase() || '';
+        const isText = TEXT_EXTENSIONS.includes(ext);
+
+        let body: any;
+
+        if (isText) {
+          const text = await file.text();
+          body = { document_content: text };
+        } else {
+          // Binary file: convert to base64
+          const buffer = await file.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+          let binary = '';
+          for (let j = 0; j < bytes.byteLength; j++) {
+            binary += String.fromCharCode(bytes[j]);
+          }
+          const base64 = btoa(binary);
+          body = { file_base64: base64, file_type: ext };
+        }
+
+        toast.info(`正在解析: ${file.name} (${i + 1}/${files.length})`);
+        const { data, error } = await supabase.functions.invoke("scrape-listing", { body });
+        if (error) throw error;
+        applyScrapedData(data as ScrapedData);
+      }
       setStep("review");
-      toast.success("文档解析完成，信息已自动填入");
+      toast.success(`${files.length} 个文件解析完成，信息已自动合并填入`);
     } catch (err: any) {
       toast.error("文档解析失败: " + (err.message || "Unknown error"));
-    } finally { setParsing(false); }
+    } finally {
+      setParsing(false);
+      // Reset input so same file can be re-uploaded
+      e.target.value = '';
+    }
   };
 
   const saveMutation = useMutation({
