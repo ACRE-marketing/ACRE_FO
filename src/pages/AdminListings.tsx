@@ -79,36 +79,55 @@ export default function AdminListings() {
     },
   });
 
+  // Merge mode: new data fills empty fields, arrays get merged (deduplicated)
   const applyScrapedData = (scraped: ScrapedData) => {
-    setForm((f) => ({
-      ...f,
-      title: scraped.title || f.title || "",
-      source_url: scraped.source_url || f.source_url || "",
-      cover_image: scraped.cover_image || f.cover_image || "",
-      price: scraped.price ?? f.price ?? undefined,
-      beds: scraped.beds ?? f.beds ?? undefined,
-      baths: scraped.baths ?? f.baths ?? undefined,
-      area: (scraped.area as any) || f.area || "Manhattan",
-      address: scraped.address || f.address || "",
-      property_type: scraped.property_type || f.property_type || "",
-      sponsor: scraped.sponsor || f.sponsor || "",
-      total_floors: scraped.total_floors ?? f.total_floors ?? undefined,
-      total_units: scraped.total_units ?? f.total_units ?? undefined,
-      completion_date: scraped.completion_date || f.completion_date || "",
-      description: scraped.description || f.description || "",
-      transportation: scraped.transportation || f.transportation || "",
-      schools: scraped.schools || f.schools || "",
-      views_description: scraped.views_description || f.views_description || "",
-      architecture: scraped.architecture || f.architecture || "",
-      interior_design: scraped.interior_design || f.interior_design || "",
-      investment_info: scraped.investment_info || f.investment_info || "",
-      target_buyers: scraped.target_buyers || f.target_buyers || "",
-      area_info: scraped.area_info || f.area_info || "",
-      summary: scraped.summary || f.summary || "",
-      highlights_list: scraped.highlights?.length ? scraped.highlights : f.highlights_list || [],
-      amenities_list: scraped.amenities?.length ? scraped.amenities : f.amenities_list || [],
-      unit_types_list: scraped.unit_types?.length ? scraped.unit_types : f.unit_types_list || [],
-    }));
+    setForm((f) => {
+      const mergeStr = (newVal: string | null | undefined, oldVal: string | undefined) =>
+        newVal && newVal.trim() ? (oldVal && oldVal.trim() ? `${oldVal}\n\n${newVal}` : newVal) : oldVal || "";
+      const mergeStrReplace = (newVal: string | null | undefined, oldVal: string | undefined) =>
+        newVal && newVal.trim() ? newVal : oldVal || "";
+
+      const mergeArr = (newArr: string[] | undefined, oldArr: string[] | undefined) => {
+        const combined = [...(oldArr || []), ...(newArr || [])];
+        return [...new Set(combined)];
+      };
+      const mergeUnitTypes = (newArr: Array<{type:string;price:string}> | undefined, oldArr: Array<{type:string;price:string}> | undefined) => {
+        const map = new Map<string, string>();
+        for (const u of (oldArr || [])) map.set(u.type, u.price);
+        for (const u of (newArr || [])) map.set(u.type, u.price);
+        return Array.from(map.entries()).map(([type, price]) => ({ type, price }));
+      };
+
+      return {
+        ...f,
+        title: mergeStrReplace(scraped.title, f.title),
+        source_url: scraped.source_url || f.source_url || "",
+        cover_image: scraped.cover_image || f.cover_image || "",
+        price: scraped.price ?? f.price ?? undefined,
+        beds: scraped.beds ?? f.beds ?? undefined,
+        baths: scraped.baths ?? f.baths ?? undefined,
+        area: (scraped.area as any) || f.area || "Manhattan",
+        address: mergeStrReplace(scraped.address, f.address),
+        property_type: mergeStrReplace(scraped.property_type, f.property_type),
+        sponsor: mergeStrReplace(scraped.sponsor, f.sponsor),
+        total_floors: scraped.total_floors ?? f.total_floors ?? undefined,
+        total_units: scraped.total_units ?? f.total_units ?? undefined,
+        completion_date: mergeStrReplace(scraped.completion_date, f.completion_date),
+        description: mergeStr(scraped.description, f.description),
+        transportation: mergeStr(scraped.transportation, f.transportation),
+        schools: mergeStr(scraped.schools, f.schools),
+        views_description: mergeStr(scraped.views_description, f.views_description),
+        architecture: mergeStr(scraped.architecture, f.architecture),
+        interior_design: mergeStr(scraped.interior_design, f.interior_design),
+        investment_info: mergeStr(scraped.investment_info, f.investment_info),
+        target_buyers: mergeStr(scraped.target_buyers, f.target_buyers),
+        area_info: mergeStr(scraped.area_info, f.area_info),
+        summary: mergeStrReplace(scraped.summary, f.summary),
+        highlights_list: mergeArr(scraped.highlights, f.highlights_list),
+        amenities_list: mergeArr(scraped.amenities, f.amenities_list),
+        unit_types_list: mergeUnitTypes(scraped.unit_types, f.unit_types_list),
+      };
+    });
   };
 
   const handleScrape = async () => {
@@ -125,22 +144,50 @@ export default function AdminListings() {
     } finally { setScraping(false); }
   };
 
+  const TEXT_EXTENSIONS = ['md', 'txt', 'csv', 'html', 'htm'];
+
   const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     setParsing(true);
+
     try {
-      const text = await file.text();
-      const { data, error } = await supabase.functions.invoke("scrape-listing", {
-        body: { document_content: text },
-      });
-      if (error) throw error;
-      applyScrapedData(data as ScrapedData);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const ext = file.name.split('.').pop()?.toLowerCase() || '';
+        const isText = TEXT_EXTENSIONS.includes(ext);
+
+        let body: any;
+
+        if (isText) {
+          const text = await file.text();
+          body = { document_content: text };
+        } else {
+          // Binary file: convert to base64
+          const buffer = await file.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+          let binary = '';
+          for (let j = 0; j < bytes.byteLength; j++) {
+            binary += String.fromCharCode(bytes[j]);
+          }
+          const base64 = btoa(binary);
+          body = { file_base64: base64, file_type: ext };
+        }
+
+        toast.info(`正在解析: ${file.name} (${i + 1}/${files.length})`);
+        const { data, error } = await supabase.functions.invoke("scrape-listing", { body });
+        if (error) throw error;
+        applyScrapedData(data as ScrapedData);
+      }
       setStep("review");
-      toast.success("文档解析完成，信息已自动填入");
+      toast.success(`${files.length} 个文件解析完成，信息已自动合并填入`);
     } catch (err: any) {
       toast.error("文档解析失败: " + (err.message || "Unknown error"));
-    } finally { setParsing(false); }
+    } finally {
+      setParsing(false);
+      // Reset input so same file can be re-uploaded
+      e.target.value = '';
+    }
   };
 
   const saveMutation = useMutation({
@@ -277,26 +324,35 @@ export default function AdminListings() {
                 </div>
 
                 <div>
-                  <Label>方式二：上传销售包文档</Label>
+                  <Label>方式二：上传销售文档（支持多文件）</Label>
                   <label className="mt-1 flex items-center justify-center gap-2 px-4 py-8 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 hover:bg-accent/30 transition-colors">
-                    <input type="file" className="hidden" accept=".md,.txt,.doc,.docx,.pdf" onChange={handleDocumentUpload} disabled={parsing} />
+                    <input type="file" className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.md,.txt,.csv,.html,.png,.jpg,.jpeg,.webp" multiple onChange={handleDocumentUpload} disabled={parsing} />
                     {parsing ? (
                       <><Loader2 className="w-5 h-5 animate-spin text-primary" /><span className="text-sm text-muted-foreground">AI 正在解析文档...</span></>
                     ) : (
-                      <><Upload className="w-5 h-5 text-muted-foreground" /><span className="text-sm text-muted-foreground">点击上传 .md / .txt 文件，AI 自动提取信息</span></>
+                      <><Upload className="w-5 h-5 text-muted-foreground" /><span className="text-sm text-muted-foreground">支持 PDF、Word、Excel、PPT、图片、TXT 等格式，可多选</span></>
                     )}
                   </label>
+                  <p className="text-xs text-muted-foreground mt-1">多次上传会自动合并补充信息，不会覆盖已有内容</p>
                 </div>
               </div>
             )}
 
             {step === "review" && (
-              <Tabs defaultValue="basic" className="mt-2">
-                <TabsList className="w-full">
-                  <TabsTrigger value="basic" className="flex-1">基本信息</TabsTrigger>
-                  <TabsTrigger value="details" className="flex-1">详细描述</TabsTrigger>
-                  <TabsTrigger value="units" className="flex-1">户型 & 配套</TabsTrigger>
-                </TabsList>
+              <div className="space-y-2 mt-2">
+                <Tabs defaultValue="basic">
+                  <div className="flex items-center justify-between mb-2">
+                    <TabsList>
+                      <TabsTrigger value="basic">基本信息</TabsTrigger>
+                      <TabsTrigger value="details">详细描述</TabsTrigger>
+                      <TabsTrigger value="units">户型 & 配套</TabsTrigger>
+                    </TabsList>
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border rounded-md cursor-pointer hover:bg-accent/50 transition-colors">
+                      <input type="file" className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.md,.txt,.csv,.html,.png,.jpg,.jpeg,.webp" multiple onChange={handleDocumentUpload} disabled={parsing} />
+                      {parsing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                      <span>{parsing ? "解析中..." : "补充上传文档"}</span>
+                    </label>
+                  </div>
 
                 {/* Tab 1: Basic Info */}
                 <TabsContent value="basic" className="space-y-3 mt-3">
@@ -432,7 +488,8 @@ export default function AdminListings() {
                     )}
                   </div>
                 </TabsContent>
-              </Tabs>
+                </Tabs>
+              </div>
             )}
 
             {step === "review" && (
