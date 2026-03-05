@@ -82,10 +82,15 @@ export default function AdminListings() {
   // Merge mode: new data fills empty fields, arrays get merged (deduplicated)
   const applyScrapedData = (scraped: ScrapedData) => {
     setForm((f) => {
-      const mergeStr = (newVal: string | null | undefined, oldVal: string | undefined) =>
-        newVal && newVal.trim() ? (oldVal && oldVal.trim() ? `${oldVal}\n\n${newVal}` : newVal) : oldVal || "";
-      const mergeStrReplace = (newVal: string | null | undefined, oldVal: string | undefined) =>
-        newVal && newVal.trim() ? newVal : oldVal || "";
+      const mergeStr = (newVal: any, oldVal: string | undefined) => {
+        const n = newVal != null ? String(newVal).trim() : '';
+        const o = oldVal != null ? String(oldVal).trim() : '';
+        return n ? (o ? `${o}\n\n${n}` : n) : o;
+      };
+      const mergeStrReplace = (newVal: any, oldVal: string | undefined) => {
+        const n = newVal != null ? String(newVal).trim() : '';
+        return n || (oldVal != null ? String(oldVal) : '');
+      };
 
       const mergeArr = (newArr: string[] | undefined, oldArr: string[] | undefined) => {
         const combined = [...(oldArr || []), ...(newArr || [])];
