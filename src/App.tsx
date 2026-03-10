@@ -45,6 +45,9 @@ const App = () => (
               <Route path="/profile" element={<AgentProfile />} />
               <Route path="/events" element={<Events />} />
               <Route path="/resources" element={<Resources />} />
+              <Route path="/tracking" element={<TrackingLinks />} />
+              <Route path="/posters" element={<PosterGenerator />} />
+              <Route path="/team" element={<ProtectedRoute requiredRole="pm"><TeamDashboard /></ProtectedRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
