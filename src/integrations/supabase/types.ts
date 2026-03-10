@@ -251,6 +251,38 @@ export type Database = {
           },
         ]
       }
+      link_clicks: {
+        Row: {
+          clicked_at: string
+          id: string
+          link_id: string
+          referer: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          clicked_at?: string
+          id?: string
+          link_id: string
+          referer?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          clicked_at?: string
+          id?: string
+          link_id?: string
+          referer?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "link_clicks_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "tracking_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listings: {
         Row: {
           address: string | null
@@ -457,6 +489,44 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      tracking_links: {
+        Row: {
+          agent_id: string
+          click_count: number
+          created_at: string
+          id: string
+          listing_id: string | null
+          short_code: string
+          title: string
+        }
+        Insert: {
+          agent_id: string
+          click_count?: number
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          short_code: string
+          title?: string
+        }
+        Update: {
+          agent_id?: string
+          click_count?: number
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          short_code?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracking_links_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       training_videos: {
         Row: {

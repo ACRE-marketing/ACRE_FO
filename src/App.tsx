@@ -17,6 +17,9 @@ import Notifications from "@/pages/Notifications";
 import AgentProfile from "@/pages/AgentProfile";
 import Events from "@/pages/Events";
 import Resources from "@/pages/Resources";
+import TrackingLinks from "@/pages/TrackingLinks";
+import PosterGenerator from "@/pages/PosterGenerator";
+import TeamDashboard from "@/pages/TeamDashboard";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +45,9 @@ const App = () => (
               <Route path="/profile" element={<AgentProfile />} />
               <Route path="/events" element={<Events />} />
               <Route path="/resources" element={<Resources />} />
+              <Route path="/tracking" element={<TrackingLinks />} />
+              <Route path="/posters" element={<PosterGenerator />} />
+              <Route path="/team" element={<ProtectedRoute requiredRole="pm"><TeamDashboard /></ProtectedRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
