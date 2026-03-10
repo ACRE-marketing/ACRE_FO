@@ -44,6 +44,48 @@ export default function Clients() {
     target_area: "", budget: "", preferred_unit_type: "",
     email: "", phone: "", wechat: "",
   });
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAiLoading(true);
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve) => {
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(",")[1]);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke("extract-client-info", {
+        body: { image_base64: base64 },
+      });
+
+      if (error) throw error;
+      if (data?.data) {
+        const d = data.data;
+        setForm((f) => ({
+          ...f,
+          name: d.name || f.name,
+          budget: d.budget || f.budget,
+          target_area: d.target_area || f.target_area,
+          preferred_unit_type: d.preferred_unit_type || f.preferred_unit_type,
+          business_type: d.business_type || f.business_type,
+          needs_summary: d.needs_summary || f.needs_summary,
+          client_occupation: d.client_occupation || f.client_occupation,
+          wechat: d.wechat || f.wechat,
+        }));
+        toast.success("AI extracted client info from screenshot");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to extract info");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients", user?.id, search, stageFilter],
