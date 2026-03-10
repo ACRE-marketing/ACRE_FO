@@ -11,8 +11,44 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Calendar, MapPin, Video, Users, Check, X, Plus, Clock } from "lucide-react";
+import { Calendar, MapPin, Video, Users, Check, X, Plus, Clock, Download } from "lucide-react";
 import { toast } from "sonner";
+
+function generateICS(event: any): string {
+  const formatDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const start = formatDate(new Date(event.start_time));
+  const end = event.end_time ? formatDate(new Date(event.end_time)) : formatDate(new Date(new Date(event.start_time).getTime() + 60 * 60 * 1000));
+  const location = event.is_online && event.meeting_link ? event.meeting_link : event.location || "";
+  const description = [event.description, event.is_online && event.meeting_link ? `Join: ${event.meeting_link}` : ""].filter(Boolean).join("\\n");
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//ACRE//Events//EN",
+    "BEGIN:VEVENT",
+    `DTSTART:${start}`,
+    `DTEND:${end}`,
+    `SUMMARY:${event.title}`,
+    `DESCRIPTION:${description}`,
+    `LOCATION:${location}`,
+    "STATUS:CONFIRMED",
+    `UID:${event.id}@acre.lovable.app`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
+
+function downloadICS(event: any) {
+  const ics = generateICS(event);
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${event.title.replace(/[^a-zA-Z0-9]/g, "_")}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast.success("Calendar invite downloaded");
+}
 
 const eventTypeLabels: Record<string, string> = {
   activity: "Activity", training: "Training", admin: "Admin Notice",
