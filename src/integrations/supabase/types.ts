@@ -46,42 +46,72 @@ export type Database = {
       clients: {
         Row: {
           agent_id: string
+          budget: string | null
+          business_type: string | null
+          client_occupation: string | null
+          contact_channel: string | null
+          contact_date: string | null
           created_at: string
+          email: string | null
           id: string
           last_contact_at: string | null
           name: string
           needs_summary: string | null
           next_followup_date: string | null
           notes: string | null
+          phone: string | null
+          preferred_unit_type: string | null
           reminder_interval_days: number | null
           source: string | null
           stage: Database["public"]["Enums"]["client_stage"]
+          target_area: string | null
+          wechat: string | null
         }
         Insert: {
           agent_id: string
+          budget?: string | null
+          business_type?: string | null
+          client_occupation?: string | null
+          contact_channel?: string | null
+          contact_date?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           last_contact_at?: string | null
           name: string
           needs_summary?: string | null
           next_followup_date?: string | null
           notes?: string | null
+          phone?: string | null
+          preferred_unit_type?: string | null
           reminder_interval_days?: number | null
           source?: string | null
           stage?: Database["public"]["Enums"]["client_stage"]
+          target_area?: string | null
+          wechat?: string | null
         }
         Update: {
           agent_id?: string
+          budget?: string | null
+          business_type?: string | null
+          client_occupation?: string | null
+          contact_channel?: string | null
+          contact_date?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           last_contact_at?: string | null
           name?: string
           needs_summary?: string | null
           next_followup_date?: string | null
           notes?: string | null
+          phone?: string | null
+          preferred_unit_type?: string | null
           reminder_interval_days?: number | null
           source?: string | null
           stage?: Database["public"]["Enums"]["client_stage"]
+          target_area?: string | null
+          wechat?: string | null
         }
         Relationships: []
       }
@@ -306,13 +336,7 @@ export type Database = {
     }
     Enums: {
       app_role: "pm" | "agent"
-      client_stage:
-        | "new_lead"
-        | "contacted"
-        | "touring"
-        | "negotiating"
-        | "signed"
-        | "paused"
+      client_stage: "active" | "opportunity" | "lost" | "pending"
       listing_area:
         | "LIC"
         | "Manhattan"
@@ -458,14 +482,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["pm", "agent"],
-      client_stage: [
-        "new_lead",
-        "contacted",
-        "touring",
-        "negotiating",
-        "signed",
-        "paused",
-      ],
+      client_stage: ["active", "opportunity", "lost", "pending"],
       listing_area: [
         "LIC",
         "Manhattan",
