@@ -156,7 +156,14 @@ export default function Clients() {
             <DialogHeader>
               <DialogTitle className="font-display">New Client</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3 mt-2">
+            {/* AI Screenshot Upload */}
+            <label className="cursor-pointer">
+              <input type="file" className="hidden" accept="image/*" onChange={handleScreenshotUpload} disabled={aiLoading} />
+              <div className="flex items-center gap-2 p-3 rounded-md border border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors text-sm text-primary">
+                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                {aiLoading ? "AI analyzing screenshot..." : "Upload WeChat screenshot to auto-fill"}
+              </div>
+            </label>
               <div><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
