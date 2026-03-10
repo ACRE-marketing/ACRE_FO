@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Building2, Users, LayoutDashboard, Bell, Settings, LogOut,
-  Menu, X, Shield, UserCircle, CalendarDays, BookOpen
+  Menu, X, Shield, UserCircle, CalendarDays, BookOpen, Link2, Image, BarChart3
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
