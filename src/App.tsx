@@ -14,6 +14,9 @@ import AdminListings from "@/pages/AdminListings";
 import Clients from "@/pages/Clients";
 import ClientDetail from "@/pages/ClientDetail";
 import Notifications from "@/pages/Notifications";
+import AgentProfile from "@/pages/AgentProfile";
+import Events from "@/pages/Events";
+import Resources from "@/pages/Resources";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +39,9 @@ const App = () => (
               <Route path="/clients" element={<Clients />} />
               <Route path="/clients/:id" element={<ClientDetail />} />
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/profile" element={<AgentProfile />} />
+              <Route path="/events" element={<Events />} />
+              <Route path="/resources" element={<Resources />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
