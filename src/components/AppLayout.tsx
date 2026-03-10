@@ -39,6 +39,9 @@ export default function AppLayout() {
     { to: "/listings", icon: Building2, label: "Listings" },
     ...(isPM ? [{ to: "/admin/listings", icon: Shield, label: "Manage Listings" }] : []),
     ...(!isPM ? [{ to: "/clients", icon: Users, label: "My Clients" }] : []),
+    ...(!isPM ? [{ to: "/profile", icon: UserCircle, label: "My Profile" }] : []),
+    { to: "/events", icon: CalendarDays, label: "Events" },
+    { to: "/resources", icon: BookOpen, label: "Resources" },
     { to: "/notifications", icon: Bell, label: "Notifications", badge: unreadCount },
   ];
 
