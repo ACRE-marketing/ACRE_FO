@@ -17,6 +17,9 @@ import Notifications from "@/pages/Notifications";
 import AgentProfile from "@/pages/AgentProfile";
 import Events from "@/pages/Events";
 import Resources from "@/pages/Resources";
+import TrackingLinks from "@/pages/TrackingLinks";
+import PosterGenerator from "@/pages/PosterGenerator";
+import TeamDashboard from "@/pages/TeamDashboard";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
