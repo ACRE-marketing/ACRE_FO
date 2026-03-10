@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Building2, Users, LayoutDashboard, Bell, Settings, LogOut,
-  Menu, X, Shield
+  Menu, X, Shield, UserCircle, CalendarDays, BookOpen
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,9 @@ export default function AppLayout() {
     { to: "/listings", icon: Building2, label: "Listings" },
     ...(isPM ? [{ to: "/admin/listings", icon: Shield, label: "Manage Listings" }] : []),
     ...(!isPM ? [{ to: "/clients", icon: Users, label: "My Clients" }] : []),
+    ...(!isPM ? [{ to: "/profile", icon: UserCircle, label: "My Profile" }] : []),
+    { to: "/events", icon: CalendarDays, label: "Events" },
+    { to: "/resources", icon: BookOpen, label: "Resources" },
     { to: "/notifications", icon: Bell, label: "Notifications", badge: unreadCount },
   ];
 
