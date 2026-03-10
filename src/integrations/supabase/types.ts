@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_materials: {
+        Row: {
+          agent_id: string
+          created_at: string
+          description: string | null
+          file_url: string
+          id: string
+          material_type: string
+          sort_order: number | null
+          title: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          description?: string | null
+          file_url: string
+          id?: string
+          material_type: string
+          sort_order?: number | null
+          title?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          description?: string | null
+          file_url?: string
+          id?: string
+          material_type?: string
+          sort_order?: number | null
+          title?: string
+        }
+        Relationships: []
+      }
       client_attachments: {
         Row: {
           client_id: string
@@ -112,6 +145,80 @@ export type Database = {
           stage?: Database["public"]["Enums"]["client_stage"]
           target_area?: string | null
           wechat?: string | null
+        }
+        Relationships: []
+      }
+      event_rsvps: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_time: string | null
+          event_type: string
+          id: string
+          is_online: boolean | null
+          location: string | null
+          meeting_link: string | null
+          start_time: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_time?: string | null
+          event_type?: string
+          id?: string
+          is_online?: boolean | null
+          location?: string | null
+          meeting_link?: string | null
+          start_time: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_time?: string | null
+          event_type?: string
+          id?: string
+          is_online?: boolean | null
+          location?: string | null
+          meeting_link?: string | null
+          start_time?: string
+          title?: string
         }
         Relationships: []
       }
@@ -281,25 +388,109 @@ export type Database = {
       }
       profiles: {
         Row: {
+          bio: string | null
           created_at: string
           email: string | null
+          headshot_url: string | null
           id: string
+          languages: string | null
           name: string
+          phone: string | null
           role: Database["public"]["Enums"]["app_role"]
+          specialties: string | null
+          wechat: string | null
         }
         Insert: {
+          bio?: string | null
           created_at?: string
           email?: string | null
+          headshot_url?: string | null
           id: string
+          languages?: string | null
           name?: string
+          phone?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          specialties?: string | null
+          wechat?: string | null
         }
         Update: {
+          bio?: string | null
           created_at?: string
           email?: string | null
+          headshot_url?: string | null
           id?: string
+          languages?: string | null
           name?: string
+          phone?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          specialties?: string | null
+          wechat?: string | null
+        }
+        Relationships: []
+      }
+      resource_documents: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          file_url: string
+          id: string
+          title: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          file_url: string
+          id?: string
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          file_url?: string
+          id?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      training_videos: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_seconds: number | null
+          id: string
+          thumbnail_url: string | null
+          title: string
+          video_url: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          id?: string
+          thumbnail_url?: string | null
+          title: string
+          video_url: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          id?: string
+          thumbnail_url?: string | null
+          title?: string
+          video_url?: string
         }
         Relationships: []
       }
@@ -320,6 +511,83 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vendors: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          email: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          phone: string | null
+          specialties: string | null
+          wechat_qr_url: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          phone?: string | null
+          specialties?: string | null
+          wechat_qr_url?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          specialties?: string | null
+          wechat_qr_url?: string | null
+        }
+        Relationships: []
+      }
+      video_progress: {
+        Row: {
+          completed: boolean | null
+          id: string
+          progress_seconds: number | null
+          updated_at: string
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          id?: string
+          progress_seconds?: number | null
+          updated_at?: string
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          id?: string
+          progress_seconds?: number | null
+          updated_at?: string
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_progress_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "training_videos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
