@@ -203,6 +203,13 @@ export default function Events() {
               >
                 <X className="w-3 h-3 mr-1" />Can't Go
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => downloadICS(event)}
+              >
+                <Download className="w-3 h-3 mr-1" />Add to Calendar
+              </Button>
             </div>
           )}
         </CardContent>
