@@ -164,6 +164,7 @@ export default function Clients() {
                 {aiLoading ? "AI analyzing screenshot..." : "Upload WeChat screenshot to auto-fill"}
               </div>
             </label>
+            <div className="space-y-3">
               <div><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
