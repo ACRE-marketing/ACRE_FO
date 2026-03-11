@@ -1,46 +1,31 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Calendar, MapPin, Video, Users, Check, X, Plus, Clock, Download } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { addMonths, subMonths, addWeeks, subWeeks, format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { toast } from "sonner";
+import CalendarGrid from "@/components/events/CalendarGrid";
+import WeekView from "@/components/events/WeekView";
+import EventDetailPanel from "@/components/events/EventDetailPanel";
+import CreateEventDialog from "@/components/events/CreateEventDialog";
+import { generateRecurringInstances, type RecurringTemplate } from "@/components/events/recurringEvents";
 
 function generateICS(event: any): string {
-  const formatDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const start = formatDate(new Date(event.start_time));
-  const end = event.end_time ? formatDate(new Date(event.end_time)) : formatDate(new Date(new Date(event.start_time).getTime() + 60 * 60 * 1000));
-  const location = event.is_online && event.meeting_link ? event.meeting_link : event.location || "";
-  const description = [event.description, event.is_online && event.meeting_link ? `Join: ${event.meeting_link}` : ""].filter(Boolean).join("\\n");
-
-  return [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//ACRE//Events//EN",
-    "BEGIN:VEVENT",
-    `DTSTART:${start}`,
-    `DTEND:${end}`,
-    `SUMMARY:${event.title}`,
-    `DESCRIPTION:${description}`,
-    `LOCATION:${location}`,
-    "STATUS:CONFIRMED",
-    `UID:${event.id}@acre.lovable.app`,
-    "END:VEVENT",
-    "END:VCALENDAR",
-  ].join("\r\n");
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const start = fmt(new Date(event.start_time));
+  const end = event.end_time ? fmt(new Date(event.end_time)) : fmt(new Date(new Date(event.start_time).getTime() + 3600000));
+  const loc = event.is_online && event.meeting_link ? event.meeting_link : event.location || "";
+  const desc = [event.description, event.is_online && event.meeting_link ? `Join: ${event.meeting_link}` : ""].filter(Boolean).join("\\n");
+  return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//ACRE//Events//EN","BEGIN:VEVENT",
+    `DTSTART:${start}`,`DTEND:${end}`,`SUMMARY:${event.title}`,`DESCRIPTION:${desc}`,
+    `LOCATION:${loc}`,"STATUS:CONFIRMED",`UID:${event.id}@acre.lovable.app`,"END:VEVENT","END:VCALENDAR"].join("\r\n");
 }
 
 function downloadICS(event: any) {
-  const ics = generateICS(event);
-  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const blob = new Blob([generateICS(event)], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -50,33 +35,24 @@ function downloadICS(event: any) {
   toast.success("Calendar invite downloaded");
 }
 
-const eventTypeLabels: Record<string, string> = {
-  activity: "Activity", training: "Training", admin: "Admin Notice",
-};
-const eventTypeColors: Record<string, string> = {
-  activity: "bg-primary/10 text-primary", training: "bg-blue-100 text-blue-700", admin: "bg-amber-100 text-amber-700",
-};
-
 export default function Events() {
   const { user, isPM } = useAuth();
   const qc = useQueryClient();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({
-    title: "", description: "", event_type: "activity", location: "",
-    is_online: false, meeting_link: "", start_time: "", end_time: "",
-  });
+  const [view, setView] = useState<"month" | "week">("month");
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
-  const { data: events = [], isLoading } = useQuery({
+  // Fetch events
+  const { data: dbEvents = [], isLoading } = useQuery({
     queryKey: ["events"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("events")
-        .select("*")
-        .order("start_time", { ascending: true });
+      const { data } = await supabase.from("events").select("*").order("start_time", { ascending: true });
       return data ?? [];
     },
   });
 
+  // Fetch RSVPs
   const { data: rsvps = [] } = useQuery({
     queryKey: ["my-rsvps", user?.id],
     queryFn: async () => {
@@ -94,36 +70,33 @@ export default function Events() {
     },
   });
 
-  const createEvent = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("events").insert({
-        title: form.title,
-        description: form.description || null,
-        event_type: form.event_type,
-        location: form.location || null,
-        is_online: form.is_online,
-        meeting_link: form.meeting_link || null,
-        start_time: new Date(form.start_time).toISOString(),
-        end_time: form.end_time ? new Date(form.end_time).toISOString() : null,
-        created_by: user!.id,
-      } as any);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["events"] });
-      toast.success("Event created");
-      setCreateOpen(false);
-      setForm({ title: "", description: "", event_type: "activity", location: "", is_online: false, meeting_link: "", start_time: "", end_time: "" });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+  // Generate recurring instances
+  const allEvents = useMemo(() => {
+    const rangeStart = startOfWeek(startOfMonth(addMonths(currentDate, -1)));
+    const rangeEnd = endOfWeek(endOfMonth(addMonths(currentDate, 1)));
 
+    const recurringTemplates = dbEvents.filter((e: any) => e.is_recurring);
+    const regularEvents = dbEvents.filter((e: any) => !e.is_recurring);
+
+    const generatedInstances = recurringTemplates.flatMap((t: any) =>
+      generateRecurringInstances(t as RecurringTemplate, rangeStart, rangeEnd)
+    );
+
+    return [...regularEvents, ...generatedInstances];
+  }, [dbEvents, currentDate]);
+
+  // RSVP status map
+  const rsvpStatuses = useMemo(() => {
+    const map: Record<string, string> = {};
+    rsvps.forEach((r: any) => { map[r.event_id] = r.status; });
+    return map;
+  }, [rsvps]);
+
+  // RSVP mutation
   const rsvpMutation = useMutation({
     mutationFn: async ({ eventId, status }: { eventId: string; status: string }) => {
       const { error } = await supabase.from("event_rsvps").upsert({
-        event_id: eventId,
-        user_id: user!.id,
-        status,
+        event_id: eventId, user_id: user!.id, status,
       } as any, { onConflict: "event_id,user_id" });
       if (error) throw error;
     },
@@ -134,160 +107,192 @@ export default function Events() {
     },
   });
 
-  const now = new Date();
-  const upcoming = events.filter((e: any) => new Date(e.start_time) >= now);
-  const past = events.filter((e: any) => new Date(e.start_time) < now);
-
-  const getRsvpStatus = (eventId: string) => {
-    const r = rsvps.find((r: any) => r.event_id === eventId);
-    return r ? (r as any).status : null;
+  // Navigation
+  const navigate = (dir: number) => {
+    if (view === "month") setCurrentDate((d) => (dir > 0 ? addMonths(d, 1) : subMonths(d, 1)));
+    else setCurrentDate((d) => (dir > 0 ? addWeeks(d, 1) : subWeeks(d, 1)));
   };
 
-  const getEventRsvpCount = (eventId: string) => {
-    return allRsvps.filter((r: any) => r.event_id === eventId && r.status === "going").length;
-  };
+  // Events for selected date
+  const selectedDateEvents = useMemo(() =>
+    allEvents.filter((e: any) => isSameDay(new Date(e.start_time), selectedDate)),
+    [allEvents, selectedDate]
+  );
 
-  const EventCard = ({ event }: { event: any }) => {
-    const myStatus = getRsvpStatus(event.id);
-    const goingCount = getEventRsvpCount(event.id);
-    const isPast = new Date(event.start_time) < now;
+  // Categorize
+  const mandatoryEvents = selectedDateEvents.filter((e: any) => e.is_mandatory);
+  const registeredEvents = selectedDateEvents.filter((e: any) => !e.is_mandatory && rsvpStatuses[e.id] === "going");
+  const pendingEvents = selectedDateEvents.filter((e: any) => !e.is_mandatory && rsvpStatuses[e.id] !== "going");
 
-    return (
-      <Card className={isPast ? "opacity-60" : ""}>
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold">{event.title}</h3>
-                <Badge className={eventTypeColors[event.event_type]}>{eventTypeLabels[event.event_type]}</Badge>
-              </div>
-              {event.description && <p className="text-sm text-muted-foreground mb-2">{event.description}</p>}
-            </div>
-          </div>
+  const getGoingCount = (eventId: string) =>
+    allRsvps.filter((r: any) => r.event_id === eventId && r.status === "going").length;
 
-          <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-3">
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
-              {new Date(event.start_time).toLocaleDateString()} {new Date(event.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </span>
-            {event.end_time && (
-              <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                Until {new Date(event.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
-            {event.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{event.location}</span>}
-            {event.is_online && event.meeting_link && (
-              <a href={event.meeting_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
-                <Video className="w-3 h-3" />Join Online
-              </a>
-            )}
-            <span className="flex items-center gap-1"><Users className="w-3 h-3" />{goingCount} going</span>
-          </div>
+  const getGoingNames = (eventId: string) =>
+    allRsvps
+      .filter((r: any) => r.event_id === eventId && r.status === "going")
+      .map((r: any) => (r as any).profiles?.name || "Unknown");
 
-          {!isPast && (
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={myStatus === "going" ? "default" : "outline"}
-                onClick={() => rsvpMutation.mutate({ eventId: event.id, status: "going" })}
-                disabled={rsvpMutation.isPending}
-              >
-                <Check className="w-3 h-3 mr-1" />Going
-              </Button>
-              <Button
-                size="sm"
-                variant={myStatus === "not_going" ? "destructive" : "outline"}
-                onClick={() => rsvpMutation.mutate({ eventId: event.id, status: "not_going" })}
-                disabled={rsvpMutation.isPending}
-              >
-                <X className="w-3 h-3 mr-1" />Can't Go
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => downloadICS(event)}
-              >
-                <Download className="w-3 h-3 mr-1" />Add to Calendar
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  };
+  const handleEventClick = useCallback((event: any) => {
+    setSelectedEvent(event);
+    setSelectedDate(new Date(event.start_time));
+  }, []);
+
+  const headerLabel = view === "month"
+    ? format(currentDate, "MMMM yyyy")
+    : `${format(startOfWeek(currentDate), "MMM d")} – ${format(addDays(startOfWeek(currentDate), 6), "MMM d, yyyy")}`;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold font-display">Events</h1>
-        {isPM && (
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button><Plus className="w-4 h-4 mr-2" />Create Event</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>New Event</DialogTitle></DialogHeader>
-              <div className="space-y-3 mt-2">
-                <div><Label>Title *</Label><Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} /></div>
-                <div>
-                  <Label>Type</Label>
-                  <Select value={form.event_type} onValueChange={(v) => setForm((f) => ({ ...f, event_type: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="activity">Activity</SelectItem>
-                      <SelectItem value="training">Training</SelectItem>
-                      <SelectItem value="admin">Admin Notice</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={2} /></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Start Time *</Label><Input type="datetime-local" value={form.start_time} onChange={(e) => setForm((f) => ({ ...f, start_time: e.target.value }))} /></div>
-                  <div><Label>End Time</Label><Input type="datetime-local" value={form.end_time} onChange={(e) => setForm((f) => ({ ...f, end_time: e.target.value }))} /></div>
-                </div>
-                <div><Label>Location</Label><Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} /></div>
-                <div className="flex items-center gap-2">
-                  <Switch checked={form.is_online} onCheckedChange={(v) => setForm((f) => ({ ...f, is_online: v }))} />
-                  <Label>Online Event</Label>
-                </div>
-                {form.is_online && (
-                  <div><Label>Meeting Link</Label><Input value={form.meeting_link} onChange={(e) => setForm((f) => ({ ...f, meeting_link: e.target.value }))} placeholder="https://zoom.us/..." /></div>
-                )}
-                <Button onClick={() => createEvent.mutate()} disabled={!form.title || !form.start_time || createEvent.isPending} className="w-full">
-                  {createEvent.isPending ? "Creating..." : "Create Event"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+        <div className="flex items-center gap-3">
+          <Tabs value={view} onValueChange={(v) => setView(v as any)}>
+            <TabsList className="h-8">
+              <TabsTrigger value="month" className="text-xs px-3">Month</TabsTrigger>
+              <TabsTrigger value="week" className="text-xs px-3">Week</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {isPM && <CreateEventDialog />}
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <div className="flex items-center justify-between">
+        <Button variant="outline" size="icon" onClick={() => navigate(-1)} className="h-8 w-8">
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <h2 className="text-lg font-semibold">{headerLabel}</h2>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => { setCurrentDate(new Date()); setSelectedDate(new Date()); }} className="text-xs">
+            Today
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => navigate(1)} className="h-8 w-8">
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-28 bg-muted rounded-lg animate-pulse" />)}</div>
+        <div className="h-64 bg-muted rounded-lg animate-pulse" />
       ) : (
-        <div className="space-y-6">
-          {upcoming.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold mb-3">Upcoming</h2>
-              <div className="space-y-3">
-                {upcoming.map((e: any) => <EventCard key={e.id} event={e} />)}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Calendar */}
+          <div className="lg:col-span-2">
+            {view === "month" ? (
+              <CalendarGrid
+                currentDate={currentDate}
+                selectedDate={selectedDate}
+                onSelectDate={(d) => { setSelectedDate(d); setSelectedEvent(null); }}
+                events={allEvents}
+                rsvpStatuses={rsvpStatuses}
+              />
+            ) : (
+              <WeekView
+                currentDate={currentDate}
+                selectedDate={selectedDate}
+                onSelectDate={(d) => { setSelectedDate(d); setSelectedEvent(null); }}
+                events={allEvents}
+                rsvpStatuses={rsvpStatuses}
+                onEventClick={handleEventClick}
+              />
+            )}
+          </div>
+
+          {/* Side panel: selected date events or event detail */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground">
+              {format(selectedDate, "EEEE, MMM d")}
+            </h3>
+
+            {selectedEvent ? (
+              <div>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedEvent(null)} className="mb-2 text-xs">
+                  ← Back to list
+                </Button>
+                <EventDetailPanel
+                  event={selectedEvent}
+                  myRsvpStatus={rsvpStatuses[selectedEvent.id] ?? null}
+                  goingCount={getGoingCount(selectedEvent.id)}
+                  goingNames={getGoingNames(selectedEvent.id)}
+                  onRsvp={(status) => rsvpMutation.mutate({ eventId: selectedEvent.id, status })}
+                  onDownloadICS={() => downloadICS(selectedEvent)}
+                  rsvpLoading={rsvpMutation.isPending}
+                />
               </div>
-            </div>
-          )}
-          {past.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold mb-3 text-muted-foreground">Past Events</h2>
-              <div className="space-y-3">
-                {past.map((e: any) => <EventCard key={e.id} event={e} />)}
-              </div>
-            </div>
-          )}
-          {events.length === 0 && (
-            <div className="text-center py-16 text-muted-foreground">No events yet</div>
-          )}
+            ) : (
+              <>
+                {mandatoryEvents.length > 0 && (
+                  <div>
+                    <div className="text-xs font-medium text-destructive mb-2">必须参加 ({mandatoryEvents.length})</div>
+                    <div className="space-y-2">
+                      {mandatoryEvents.map((e: any) => (
+                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="mandatory" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {registeredEvents.length > 0 && (
+                  <div>
+                    <div className="text-xs font-medium text-green-600 mb-2">已报名 ({registeredEvents.length})</div>
+                    <div className="space-y-2">
+                      {registeredEvents.map((e: any) => (
+                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="going" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {pendingEvents.length > 0 && (
+                  <div>
+                    <div className="text-xs font-medium text-blue-600 mb-2">待报名 ({pendingEvents.length})</div>
+                    <div className="space-y-2">
+                      {pendingEvents.map((e: any) => (
+                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="pending" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {selectedDateEvents.length === 0 && (
+                  <p className="text-sm text-muted-foreground py-8 text-center">No events on this day</p>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+function EventQuickCard({ event, onClick, status }: { event: any; onClick: () => void; status: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left rounded-lg border p-3 transition-colors hover:shadow-sm ${
+        status === "mandatory"
+          ? "border-destructive/30 bg-destructive/5 hover:bg-destructive/10"
+          : status === "going"
+          ? "border-green-200 bg-green-50 hover:bg-green-100"
+          : "border-border bg-card hover:bg-muted/50"
+      }`}
+    >
+      <div className="font-medium text-sm">{event.title}</div>
+      <div className="text-xs text-muted-foreground mt-0.5">
+        {format(new Date(event.start_time), "h:mm a")}
+        {event.is_online && " · Online"}
+        {!event.is_online && event.location && ` · ${event.location}`}
+      </div>
+      {status === "mandatory" && event.is_online && event.meeting_link && (
+        <a
+          href={event.meeting_link}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 mt-1.5 text-xs text-blue-600 hover:underline"
+        >
+          Join Zoom →
+        </a>
+      )}
+    </button>
   );
 }
