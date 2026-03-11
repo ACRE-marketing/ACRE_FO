@@ -95,26 +95,35 @@ export default function EventDetailPanel({
 
           {/* Meeting info - only for going/mandatory */}
           {isGoing && isOnline && event.meeting_link && (
-            <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-blue-800">
+            <div className={`rounded-lg border p-3 space-y-2 ${isPast ? "bg-muted/50 border-border" : "bg-blue-50 border-blue-200"}`}>
+              <div className={`flex items-center gap-2 text-sm font-medium ${isPast ? "text-muted-foreground" : "text-blue-800"}`}>
                 <Video className="w-4 h-4 shrink-0" />
                 Meeting Info
               </div>
-              <a
-                href={event.meeting_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2"
-              >
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+              {isPast ? (
+                <Button size="sm" disabled className="opacity-50 w-full">
                   <ExternalLink className="w-3 h-3 mr-1" />
-                  Join Meeting
+                  Meeting Ended
                 </Button>
-              </a>
-              {event.zoom_password && (
-                <div className="flex items-center gap-1.5 text-xs text-blue-700">
-                  <Lock className="w-3 h-3 shrink-0" />
-                  <span className="break-all">Password: <span className="font-mono font-medium">{event.zoom_password}</span></span>
+              ) : isZoomWindowOpen ? (
+                <>
+                  <a href={event.meeting_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 w-full">
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white w-full">
+                      <ExternalLink className="w-3 h-3 mr-1" />
+                      Join Meeting
+                    </Button>
+                  </a>
+                  {event.zoom_password && (
+                    <div className="flex items-center gap-1.5 text-xs text-blue-700">
+                      <Lock className="w-3 h-3 shrink-0" />
+                      <span className="break-all">Password: <span className="font-mono font-medium">{event.zoom_password}</span></span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-xs text-muted-foreground">
+                  <Clock className="w-3 h-3 inline mr-1" />
+                  Zoom link & password will be available 10 minutes before the meeting
                 </div>
               )}
             </div>

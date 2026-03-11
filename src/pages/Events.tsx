@@ -97,13 +97,25 @@ export default function Events() {
     [allEvents, selectedDate]
   );
 
-  // Upcoming events (for when selected day has no events)
+  // Upcoming events - deduplicate recurring events (show only next instance per template)
   const upcomingEvents = useMemo(() => {
     const today = startOfDay(new Date());
-    return allEvents
+    const future = allEvents
       .filter((e: any) => isAfter(new Date(e.start_time), today))
-      .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-      .slice(0, 5);
+      .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
+    // For recurring events, only keep the first (nearest) instance per parent ID
+    const seenRecurring = new Set<string>();
+    const deduped = future.filter((e: any) => {
+      const parentId = e._recurring_parent_id;
+      if (parentId) {
+        if (seenRecurring.has(parentId)) return false;
+        seenRecurring.add(parentId);
+      }
+      return true;
+    });
+
+    return deduped.slice(0, 5);
   }, [allEvents]);
 
   // Which events to display in sidebar
