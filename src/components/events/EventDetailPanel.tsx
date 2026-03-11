@@ -16,11 +16,18 @@ interface EventDetailPanelProps {
 export default function EventDetailPanel({
   event, myRsvpStatus, goingCount, goingNames, onRsvp, rsvpLoading,
 }: EventDetailPanelProps) {
-  const isPast = new Date(event.start_time) < new Date();
+  const now = new Date();
+  const startTime = new Date(event.start_time);
+  const isPast = startTime < now;
   const isMandatory = event.is_mandatory;
   const isOnline = event.is_online;
   const isGoing = myRsvpStatus === "going" || isMandatory;
   const hasExternalRsvp = !!event.external_rsvp_url;
+
+  // Zoom info only visible within 10 minutes before meeting start
+  const minutesBefore = (startTime.getTime() - now.getTime()) / (1000 * 60);
+  const isZoomWindowOpen = minutesBefore <= 10 && !isPast;
+  const isZoomWindowSoon = minutesBefore > 10; // future but not yet in window
 
   const eventTypeLabels: Record<string, string> = {
     activity: "Activity", training: "Training", admin: "Admin Notice",
