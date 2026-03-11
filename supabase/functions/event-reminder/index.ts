@@ -74,7 +74,7 @@ serve(async (req) => {
       }
     }
 
-    // ─── Tier 2: 2 hours before → push for ONLINE events ───
+    // ─── Tier 2: 2 hours before → push for OFFLINE events ───
     {
       const in2h = new Date(now.getTime() + 2 * 60 * 60 * 1000);
       const in2h10 = new Date(in2h.getTime() + 10 * 60 * 1000);
@@ -82,7 +82,7 @@ serve(async (req) => {
       const { data: events } = await supabase
         .from("events")
         .select("*")
-        .eq("is_online", true)
+        .eq("is_online", false)
         .gte("start_time", in2h.toISOString())
         .lt("start_time", in2h10.toISOString());
 
@@ -93,8 +93,7 @@ serve(async (req) => {
           : await getRsvpUserIds(event.id);
 
         let msg = `🔔 Starting in 2 hours: "${event.title}"`;
-        if (event.meeting_link) msg += ` 🔗 Join: ${event.meeting_link}`;
-        if (event.zoom_password) msg += ` (Password: ${event.zoom_password})`;
+        if (event.location) msg += ` 📍 ${event.location}`;
 
         totalNotifications += await notify(userIds, msg, "event_reminder_2h");
       }
