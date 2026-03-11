@@ -97,13 +97,25 @@ export default function Events() {
     [allEvents, selectedDate]
   );
 
-  // Upcoming events (for when selected day has no events)
+  // Upcoming events - deduplicate recurring events (show only next instance per template)
   const upcomingEvents = useMemo(() => {
     const today = startOfDay(new Date());
-    return allEvents
+    const future = allEvents
       .filter((e: any) => isAfter(new Date(e.start_time), today))
-      .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-      .slice(0, 5);
+      .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
+    // For recurring events, only keep the first (nearest) instance per template_id
+    const seenRecurring = new Set<string>();
+    const deduped = future.filter((e: any) => {
+      const templateId = e.template_id;
+      if (templateId) {
+        if (seenRecurring.has(templateId)) return false;
+        seenRecurring.add(templateId);
+      }
+      return true;
+    });
+
+    return deduped.slice(0, 5);
   }, [allEvents]);
 
   // Which events to display in sidebar
@@ -256,6 +268,11 @@ export default function Events() {
 
 function EventQuickCard({ event, onClick, status, rsvpStatuses }: { event: any; onClick: () => void; status: string; rsvpStatuses: Record<string, string> }) {
   const isRegistered = status === "going" || status === "mandatory";
+  const now = new Date();
+  const startTime = new Date(event.start_time);
+  const isPast = startTime < now;
+  const minutesBefore = (startTime.getTime() - now.getTime()) / (1000 * 60);
+  const isZoomWindowOpen = minutesBefore <= 10 && !isPast;
 
   return (
     <button
@@ -272,12 +289,11 @@ function EventQuickCard({ event, onClick, status, rsvpStatuses }: { event: any; 
       <div className="text-xs text-muted-foreground mt-0.5">
         {format(new Date(event.start_time), "MMM d · h:mm a")}
         {event.is_online && " · Online"}
-        {/* Show area for non-registered, full location for registered */}
         {!event.is_online && event.area && !isRegistered && ` · ${event.area}`}
         {!event.is_online && event.location && isRegistered && ` · ${event.location}`}
         {!event.is_online && !event.area && event.location && !isRegistered && ` · TBD`}
       </div>
-      {status === "mandatory" && event.is_online && event.meeting_link && (
+      {status === "mandatory" && event.is_online && event.meeting_link && isZoomWindowOpen && (
         <a
           href={event.meeting_link}
           target="_blank"
@@ -287,6 +303,11 @@ function EventQuickCard({ event, onClick, status, rsvpStatuses }: { event: any; 
         >
           Join Zoom →
         </a>
+      )}
+      {status === "mandatory" && event.is_online && event.meeting_link && isPast && (
+        <span className="inline-flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
+          Meeting ended
+        </span>
       )}
       {event.external_rsvp_url && status === "pending" && (
         <div className="mt-1 text-xs text-amber-600 font-medium">External RSVP required</div>
