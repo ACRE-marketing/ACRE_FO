@@ -182,11 +182,13 @@ export type Database = {
       }
       events: {
         Row: {
+          area: string | null
           created_at: string
           created_by: string | null
           description: string | null
           end_time: string | null
           event_type: string
+          external_rsvp_url: string | null
           id: string
           is_mandatory: boolean | null
           is_online: boolean | null
@@ -199,11 +201,13 @@ export type Database = {
           zoom_password: string | null
         }
         Insert: {
+          area?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           end_time?: string | null
           event_type?: string
+          external_rsvp_url?: string | null
           id?: string
           is_mandatory?: boolean | null
           is_online?: boolean | null
@@ -216,11 +220,13 @@ export type Database = {
           zoom_password?: string | null
         }
         Update: {
+          area?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           end_time?: string | null
           event_type?: string
+          external_rsvp_url?: string | null
           id?: string
           is_mandatory?: boolean | null
           is_online?: boolean | null

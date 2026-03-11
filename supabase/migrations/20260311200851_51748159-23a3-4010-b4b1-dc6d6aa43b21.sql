@@ -1,0 +1,3 @@
+ALTER TABLE public.events
+ADD COLUMN IF NOT EXISTS external_rsvp_url text DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS area text DEFAULT NULL;
