@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const INITIAL_FORM = {
@@ -23,8 +23,44 @@ export default function CreateEventDialog() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
+  const [rawText, setRawText] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [showRaw, setShowRaw] = useState(true);
 
   const set = (key: string, val: any) => setForm((f) => ({ ...f, [key]: val }));
+
+  const parseText = async () => {
+    if (!rawText.trim()) return;
+    setParsing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("parse-event-text", {
+        body: { rawText },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setForm((f) => ({
+        ...f,
+        title: data.title || f.title,
+        description: data.description || f.description,
+        event_type: data.event_type || f.event_type,
+        external_rsvp_url: data.external_rsvp_url || f.external_rsvp_url,
+        area: data.area || f.area,
+        location: data.location || f.location,
+        is_online: data.is_online ?? f.is_online,
+        meeting_link: data.meeting_link || f.meeting_link,
+        zoom_password: data.zoom_password || f.zoom_password,
+        start_time: data.start_time ? new Date(data.start_time).toISOString().slice(0, 16) : f.start_time,
+        end_time: data.end_time ? new Date(data.end_time).toISOString().slice(0, 16) : f.end_time,
+      }));
+      setShowRaw(false);
+      toast.success("AI parsed event info — please review and adjust");
+    } catch (e: any) {
+      toast.error("Parse failed: " + e.message);
+    } finally {
+      setParsing(false);
+    }
+  };
 
   const createEvent = useMutation({
     mutationFn: async () => {
@@ -52,18 +88,53 @@ export default function CreateEventDialog() {
       toast.success("Event created");
       setOpen(false);
       setForm(INITIAL_FORM);
+      setRawText("");
+      setShowRaw(true);
     },
     onError: (e: any) => toast.error(e.message),
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setShowRaw(true); setRawText(""); } }}>
       <DialogTrigger asChild>
         <Button><Plus className="w-4 h-4 mr-2" />Create Event</Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>New Event</DialogTitle></DialogHeader>
         <div className="space-y-3 mt-2">
+
+          {/* AI Paste Area */}
+          {showRaw && (
+            <div className="space-y-2 p-3 rounded-lg border border-dashed border-primary/30 bg-primary/5">
+              <Label className="flex items-center gap-1.5 text-sm font-medium">
+                <Sparkles className="w-4 h-4 text-primary" />
+                Paste event info (AI will auto-extract)
+              </Label>
+              <Textarea
+                value={rawText}
+                onChange={(e) => setRawText(e.target.value)}
+                rows={5}
+                placeholder="Paste the full event text here — title, description, RSVP links, location, time, etc. AI will extract and organize everything automatically."
+                className="text-sm"
+              />
+              <div className="flex gap-2">
+                <Button onClick={parseText} disabled={!rawText.trim() || parsing} size="sm" className="flex-1">
+                  {parsing ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Parsing...</> : <><Sparkles className="w-3 h-3 mr-1" />Auto-Extract</>}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowRaw(false)} className="text-xs text-muted-foreground">
+                  Skip, fill manually
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!showRaw && (
+            <Button variant="ghost" size="sm" onClick={() => setShowRaw(true)} className="text-xs text-muted-foreground w-full">
+              <Sparkles className="w-3 h-3 mr-1" />Paste new text to re-parse
+            </Button>
+          )}
+
+          {/* Structured Form */}
           <div><Label>Title *</Label><Input value={form.title} onChange={(e) => set("title", e.target.value)} /></div>
           <div>
             <Label>Type</Label>
@@ -76,7 +147,7 @@ export default function CreateEventDialog() {
               </SelectContent>
             </Select>
           </div>
-          <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={3} /></div>
+          <div><Label>Description (key info only)</Label><Textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={3} /></div>
 
           <div className="flex items-center gap-2">
             <Switch checked={form.is_mandatory} onCheckedChange={(v) => set("is_mandatory", v)} />
@@ -103,7 +174,7 @@ export default function CreateEventDialog() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Area (public)</Label><Input value={form.area} onChange={(e) => set("area", e.target.value)} placeholder="e.g. Williamsburg, Brooklyn" /></div>
+            <div><Label>Area (public)</Label><Input value={form.area} onChange={(e) => set("area", e.target.value)} placeholder="e.g. Williamsburg" /></div>
             <div><Label>Full Address (registered only)</Label><Input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Exact address" /></div>
           </div>
 
@@ -119,9 +190,9 @@ export default function CreateEventDialog() {
           )}
 
           <div>
-            <Label>External RSVP URL (optional)</Label>
+            <Label>External RSVP URL</Label>
             <Input value={form.external_rsvp_url} onChange={(e) => set("external_rsvp_url", e.target.value)} placeholder="https://forms.office.com/..." />
-            <p className="text-xs text-muted-foreground mt-1">If set, agents must complete this form before their internal RSVP counts.</p>
+            <p className="text-xs text-muted-foreground mt-1">If set, agents must complete external form before in-app registration counts.</p>
           </div>
 
           <Button onClick={() => createEvent.mutate()} disabled={!form.title || !form.start_time || createEvent.isPending} className="w-full">
