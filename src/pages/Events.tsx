@@ -104,13 +104,13 @@ export default function Events() {
       .filter((e: any) => isAfter(new Date(e.start_time), today))
       .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
-    // For recurring events, only keep the first (nearest) instance per parent ID
+    // For recurring events, only keep the first (nearest) instance per template_id
     const seenRecurring = new Set<string>();
     const deduped = future.filter((e: any) => {
-      const parentId = e._recurring_parent_id;
-      if (parentId) {
-        if (seenRecurring.has(parentId)) return false;
-        seenRecurring.add(parentId);
+      const templateId = e.template_id;
+      if (templateId) {
+        if (seenRecurring.has(templateId)) return false;
+        seenRecurring.add(templateId);
       }
       return true;
     });
