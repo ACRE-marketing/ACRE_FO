@@ -99,7 +99,7 @@ serve(async (req) => {
       }
     }
 
-    // ─── Tier 3: 10 minutes before → push for OFFLINE events ───
+    // ─── Tier 3: 10 minutes before → push for ONLINE events ───
     {
       const in10m = new Date(now.getTime() + 10 * 60 * 1000);
       const in10m10 = new Date(in10m.getTime() + 10 * 60 * 1000);
@@ -107,7 +107,7 @@ serve(async (req) => {
       const { data: events } = await supabase
         .from("events")
         .select("*")
-        .eq("is_online", false)
+        .eq("is_online", true)
         .gte("start_time", in10m.toISOString())
         .lt("start_time", in10m10.toISOString());
 
@@ -118,7 +118,8 @@ serve(async (req) => {
           : await getRsvpUserIds(event.id);
 
         let msg = `🔔 Starting in 10 minutes: "${event.title}"`;
-        if (event.location) msg += ` 📍 ${event.location}`;
+        if (event.meeting_link) msg += ` 🔗 Join: ${event.meeting_link}`;
+        if (event.zoom_password) msg += ` (Password: ${event.zoom_password})`;
 
         totalNotifications += await notify(userIds, msg, "event_reminder_10m");
       }
