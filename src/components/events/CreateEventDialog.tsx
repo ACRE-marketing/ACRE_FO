@@ -12,15 +12,17 @@ import { Switch } from "@/components/ui/switch";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
+const INITIAL_FORM = {
+  title: "", description: "", event_type: "activity", location: "", area: "",
+  is_online: false, meeting_link: "", zoom_password: "", start_time: "", end_time: "",
+  is_recurring: false, recurrence_rule: "", is_mandatory: false, external_rsvp_url: "",
+};
+
 export default function CreateEventDialog() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    title: "", description: "", event_type: "activity", location: "",
-    is_online: false, meeting_link: "", zoom_password: "", start_time: "", end_time: "",
-    is_recurring: false, recurrence_rule: "", is_mandatory: false,
-  });
+  const [form, setForm] = useState(INITIAL_FORM);
 
   const set = (key: string, val: any) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -31,6 +33,7 @@ export default function CreateEventDialog() {
         description: form.description || null,
         event_type: form.event_type,
         location: form.location || null,
+        area: form.area || null,
         is_online: form.is_online,
         meeting_link: form.meeting_link || null,
         zoom_password: form.zoom_password || null,
@@ -40,6 +43,7 @@ export default function CreateEventDialog() {
         is_recurring: form.is_recurring,
         recurrence_rule: form.is_recurring ? form.recurrence_rule : null,
         is_mandatory: form.is_mandatory,
+        external_rsvp_url: form.external_rsvp_url || null,
       } as any);
       if (error) throw error;
     },
@@ -47,11 +51,7 @@ export default function CreateEventDialog() {
       qc.invalidateQueries({ queryKey: ["events"] });
       toast.success("Event created");
       setOpen(false);
-      setForm({
-        title: "", description: "", event_type: "activity", location: "",
-        is_online: false, meeting_link: "", zoom_password: "", start_time: "", end_time: "",
-        is_recurring: false, recurrence_rule: "", is_mandatory: false,
-      });
+      setForm(INITIAL_FORM);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -76,7 +76,7 @@ export default function CreateEventDialog() {
               </SelectContent>
             </Select>
           </div>
-          <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={2} /></div>
+          <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={3} /></div>
 
           <div className="flex items-center gap-2">
             <Switch checked={form.is_mandatory} onCheckedChange={(v) => set("is_mandatory", v)} />
@@ -101,7 +101,11 @@ export default function CreateEventDialog() {
             <div><Label>Start Time *</Label><Input type="datetime-local" value={form.start_time} onChange={(e) => set("start_time", e.target.value)} /></div>
             <div><Label>End Time</Label><Input type="datetime-local" value={form.end_time} onChange={(e) => set("end_time", e.target.value)} /></div>
           </div>
-          <div><Label>Location</Label><Input value={form.location} onChange={(e) => set("location", e.target.value)} /></div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Area (public)</Label><Input value={form.area} onChange={(e) => set("area", e.target.value)} placeholder="e.g. Williamsburg, Brooklyn" /></div>
+            <div><Label>Full Address (registered only)</Label><Input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Exact address" /></div>
+          </div>
 
           <div className="flex items-center gap-2">
             <Switch checked={form.is_online} onCheckedChange={(v) => set("is_online", v)} />
@@ -113,6 +117,12 @@ export default function CreateEventDialog() {
               <div><Label>Zoom Password</Label><Input value={form.zoom_password} onChange={(e) => set("zoom_password", e.target.value)} placeholder="Optional" /></div>
             </>
           )}
+
+          <div>
+            <Label>External RSVP URL (optional)</Label>
+            <Input value={form.external_rsvp_url} onChange={(e) => set("external_rsvp_url", e.target.value)} placeholder="https://forms.office.com/..." />
+            <p className="text-xs text-muted-foreground mt-1">If set, agents must complete this form before their internal RSVP counts.</p>
+          </div>
 
           <Button onClick={() => createEvent.mutate()} disabled={!form.title || !form.start_time || createEvent.isPending} className="w-full">
             {createEvent.isPending ? "Creating..." : "Create Event"}

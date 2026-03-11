@@ -5,35 +5,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { addMonths, subMonths, addWeeks, subWeeks, format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays } from "date-fns";
+import { addMonths, subMonths, addWeeks, subWeeks, format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isAfter, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import CalendarGrid from "@/components/events/CalendarGrid";
 import WeekView from "@/components/events/WeekView";
 import EventDetailPanel from "@/components/events/EventDetailPanel";
 import CreateEventDialog from "@/components/events/CreateEventDialog";
 import { generateRecurringInstances, type RecurringTemplate } from "@/components/events/recurringEvents";
-
-function generateICS(event: any): string {
-  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const start = fmt(new Date(event.start_time));
-  const end = event.end_time ? fmt(new Date(event.end_time)) : fmt(new Date(new Date(event.start_time).getTime() + 3600000));
-  const loc = event.is_online && event.meeting_link ? event.meeting_link : event.location || "";
-  const desc = [event.description, event.is_online && event.meeting_link ? `Join: ${event.meeting_link}` : ""].filter(Boolean).join("\\n");
-  return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//ACRE//Events//EN","BEGIN:VEVENT",
-    `DTSTART:${start}`,`DTEND:${end}`,`SUMMARY:${event.title}`,`DESCRIPTION:${desc}`,
-    `LOCATION:${loc}`,"STATUS:CONFIRMED",`UID:${event.id}@acre.lovable.app`,"END:VEVENT","END:VCALENDAR"].join("\r\n");
-}
-
-function downloadICS(event: any) {
-  const blob = new Blob([generateICS(event)], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${event.title.replace(/[^a-zA-Z0-9]/g, "_")}.ics`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast.success("Calendar invite downloaded");
-}
 
 export default function Events() {
   const { user, isPM } = useAuth();
@@ -119,10 +97,23 @@ export default function Events() {
     [allEvents, selectedDate]
   );
 
+  // Upcoming events (for when selected day has no events)
+  const upcomingEvents = useMemo(() => {
+    const today = startOfDay(new Date());
+    return allEvents
+      .filter((e: any) => isAfter(new Date(e.start_time), today))
+      .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+      .slice(0, 5);
+  }, [allEvents]);
+
+  // Which events to display in sidebar
+  const displayEvents = selectedDateEvents.length > 0 ? selectedDateEvents : upcomingEvents;
+  const isShowingUpcoming = selectedDateEvents.length === 0;
+
   // Categorize
-  const mandatoryEvents = selectedDateEvents.filter((e: any) => e.is_mandatory);
-  const registeredEvents = selectedDateEvents.filter((e: any) => !e.is_mandatory && rsvpStatuses[e.id] === "going");
-  const pendingEvents = selectedDateEvents.filter((e: any) => !e.is_mandatory && rsvpStatuses[e.id] !== "going");
+  const mandatoryEvents = displayEvents.filter((e: any) => e.is_mandatory);
+  const registeredEvents = displayEvents.filter((e: any) => !e.is_mandatory && rsvpStatuses[e.id] === "going");
+  const pendingEvents = displayEvents.filter((e: any) => !e.is_mandatory && rsvpStatuses[e.id] !== "going");
 
   const getGoingCount = (eventId: string) =>
     allRsvps.filter((r: any) => r.event_id === eventId && r.status === "going").length;
@@ -199,10 +190,10 @@ export default function Events() {
             )}
           </div>
 
-          {/* Side panel: selected date events or event detail */}
+          {/* Side panel */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-muted-foreground">
-              {format(selectedDate, "EEEE, MMM d")}
+              {isShowingUpcoming ? "Upcoming Events" : format(selectedDate, "EEEE, MMM d")}
             </h3>
 
             {selectedEvent ? (
@@ -216,7 +207,6 @@ export default function Events() {
                   goingCount={getGoingCount(selectedEvent.id)}
                   goingNames={getGoingNames(selectedEvent.id)}
                   onRsvp={(status) => rsvpMutation.mutate({ eventId: selectedEvent.id, status })}
-                  onDownloadICS={() => downloadICS(selectedEvent)}
                   rsvpLoading={rsvpMutation.isPending}
                 />
               </div>
@@ -227,7 +217,7 @@ export default function Events() {
                     <div className="text-xs font-medium text-destructive mb-2">必须参加 ({mandatoryEvents.length})</div>
                     <div className="space-y-2">
                       {mandatoryEvents.map((e: any) => (
-                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="mandatory" />
+                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="mandatory" rsvpStatuses={rsvpStatuses} />
                       ))}
                     </div>
                   </div>
@@ -237,7 +227,7 @@ export default function Events() {
                     <div className="text-xs font-medium text-green-600 mb-2">已报名 ({registeredEvents.length})</div>
                     <div className="space-y-2">
                       {registeredEvents.map((e: any) => (
-                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="going" />
+                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="going" rsvpStatuses={rsvpStatuses} />
                       ))}
                     </div>
                   </div>
@@ -247,13 +237,13 @@ export default function Events() {
                     <div className="text-xs font-medium text-blue-600 mb-2">待报名 ({pendingEvents.length})</div>
                     <div className="space-y-2">
                       {pendingEvents.map((e: any) => (
-                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="pending" />
+                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="pending" rsvpStatuses={rsvpStatuses} />
                       ))}
                     </div>
                   </div>
                 )}
-                {selectedDateEvents.length === 0 && (
-                  <p className="text-sm text-muted-foreground py-8 text-center">No events on this day</p>
+                {displayEvents.length === 0 && (
+                  <p className="text-sm text-muted-foreground py-8 text-center">No upcoming events</p>
                 )}
               </>
             )}
@@ -264,7 +254,9 @@ export default function Events() {
   );
 }
 
-function EventQuickCard({ event, onClick, status }: { event: any; onClick: () => void; status: string }) {
+function EventQuickCard({ event, onClick, status, rsvpStatuses }: { event: any; onClick: () => void; status: string; rsvpStatuses: Record<string, string> }) {
+  const isRegistered = status === "going" || status === "mandatory";
+
   return (
     <button
       onClick={onClick}
@@ -276,11 +268,14 @@ function EventQuickCard({ event, onClick, status }: { event: any; onClick: () =>
           : "border-border bg-card hover:bg-muted/50"
       }`}
     >
-      <div className="font-medium text-sm">{event.title}</div>
+      <div className="font-medium text-sm truncate">{event.title}</div>
       <div className="text-xs text-muted-foreground mt-0.5">
-        {format(new Date(event.start_time), "h:mm a")}
+        {format(new Date(event.start_time), "MMM d · h:mm a")}
         {event.is_online && " · Online"}
-        {!event.is_online && event.location && ` · ${event.location}`}
+        {/* Show area for non-registered, full location for registered */}
+        {!event.is_online && event.area && !isRegistered && ` · ${event.area}`}
+        {!event.is_online && event.location && isRegistered && ` · ${event.location}`}
+        {!event.is_online && !event.area && event.location && !isRegistered && ` · TBD`}
       </div>
       {status === "mandatory" && event.is_online && event.meeting_link && (
         <a
@@ -292,6 +287,9 @@ function EventQuickCard({ event, onClick, status }: { event: any; onClick: () =>
         >
           Join Zoom →
         </a>
+      )}
+      {event.external_rsvp_url && status === "pending" && (
+        <div className="mt-1 text-xs text-amber-600 font-medium">External RSVP required</div>
       )}
     </button>
   );
