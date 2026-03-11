@@ -188,11 +188,15 @@ export type Database = {
           end_time: string | null
           event_type: string
           id: string
+          is_mandatory: boolean | null
           is_online: boolean | null
+          is_recurring: boolean | null
           location: string | null
           meeting_link: string | null
+          recurrence_rule: string | null
           start_time: string
           title: string
+          zoom_password: string | null
         }
         Insert: {
           created_at?: string
@@ -201,11 +205,15 @@ export type Database = {
           end_time?: string | null
           event_type?: string
           id?: string
+          is_mandatory?: boolean | null
           is_online?: boolean | null
+          is_recurring?: boolean | null
           location?: string | null
           meeting_link?: string | null
+          recurrence_rule?: string | null
           start_time: string
           title: string
+          zoom_password?: string | null
         }
         Update: {
           created_at?: string
@@ -214,11 +222,15 @@ export type Database = {
           end_time?: string | null
           event_type?: string
           id?: string
+          is_mandatory?: boolean | null
           is_online?: boolean | null
+          is_recurring?: boolean | null
           location?: string | null
           meeting_link?: string | null
+          recurrence_rule?: string | null
           start_time?: string
           title?: string
+          zoom_password?: string | null
         }
         Relationships: []
       }
