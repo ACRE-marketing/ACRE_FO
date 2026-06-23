@@ -4,6 +4,7 @@ import {
   addDays, isSameMonth, isSameDay, format, isToday,
 } from "date-fns";
 import { cn } from "@/lib/utils";
+import { getCategory, categoryStyles } from "./eventCategory";
 
 interface CalendarEvent {
   id: string;
@@ -21,12 +22,6 @@ interface CalendarGridProps {
   events: CalendarEvent[];
   rsvpStatuses: Record<string, string>;
 }
-
-const typeColors: Record<string, string> = {
-  activity: "bg-primary",
-  training: "bg-blue-500",
-  admin: "bg-amber-500",
-};
 
 export default function CalendarGrid({
   currentDate, selectedDate, onSelectDate, events, rsvpStatuses,
