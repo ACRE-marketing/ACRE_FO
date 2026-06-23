@@ -99,7 +99,7 @@ export default function UpcomingEventCard({
       {/* Notes / description */}
       {event.description && (
         <div className="px-4 pb-2">
-          <div className="rounded-md bg-muted/40 border border-border/60 px-3 py-2 text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed line-clamp-5">
+          <div className="rounded-md bg-muted/40 border border-border/60 px-3 py-2 text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed break-words">
             {event.description}
           </div>
         </div>

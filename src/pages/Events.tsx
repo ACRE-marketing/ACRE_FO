@@ -114,7 +114,7 @@ export default function Events() {
   );
 
   const upcomingList = upcomingTab === "mine" ? upcomingMine : upcomingAll;
-  const visibleUpcoming = upcomingExpanded ? upcomingList : upcomingList.slice(0, 5);
+  const visibleUpcoming = upcomingExpanded ? upcomingList : upcomingList.slice(0, 6);
 
   const getGoingCount = (eventId: string) =>
     allRsvps.filter((r: any) => r.event_id === eventId && r.status === "going").length;
@@ -278,7 +278,7 @@ export default function Events() {
                     />
                   ))}
                 </div>
-                {upcomingList.length > 5 && (
+                {upcomingList.length > 6 && (
                   <div className="flex justify-center pt-2">
                     <Button variant="outline" size="sm" onClick={() => setUpcomingExpanded((v) => !v)}>
                       {upcomingExpanded ? "Show less" : `Expand to see all (${upcomingList.length})`}
