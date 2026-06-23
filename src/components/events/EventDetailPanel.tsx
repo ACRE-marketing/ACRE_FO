@@ -160,17 +160,38 @@ export default function EventDetailPanel({
             </div>
           )}
 
-          {/* Attendees */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="w-4 h-4 shrink-0" />
-            <span>{isMandatory ? "All team" : `${goingCount} going`}</span>
-            {goingNames.length > 0 && !isMandatory && (
-              <span className="text-xs truncate">({goingNames.slice(0, 5).join(", ")}{goingNames.length > 5 ? "..." : ""})</span>
+          {/* Attendees + capacity */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="w-4 h-4 shrink-0" />
+              <span>
+                {isMandatory
+                  ? "All team"
+                  : typeof capacity === "number" && capacity > 0
+                  ? `${goingCount} / ${capacity} registered`
+                  : `${goingCount} going`}
+              </span>
+              {goingNames.length > 0 && !isMandatory && (
+                <span className="text-xs truncate">({goingNames.slice(0, 5).join(", ")}{goingNames.length > 5 ? "..." : ""})</span>
+              )}
+            </div>
+            {typeof capacity === "number" && capacity > 0 && (
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className={`h-full ${isFull ? "bg-destructive" : styles.dot}`} style={{ width: `${Math.min(100, (goingCount / capacity) * 100)}%` }} />
+              </div>
+            )}
+            {deadline && !isPast && (
+              <div className={`flex items-center gap-1.5 text-xs ${registrationClosed ? "text-muted-foreground" : "text-amber-700"}`}>
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                {registrationClosed
+                  ? `Registration closed ${format(deadline, "MMM d, h:mm a")}`
+                  : `Registration closes ${format(deadline, "MMM d, h:mm a")}`}
+              </div>
             )}
           </div>
 
           {/* External RSVP notice */}
-          {hasExternalRsvp && !isGoing && !isPast && (
+          {hasExternalRsvp && !isGoing && !isPast && !registrationClosed && !isFull && (
             <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 space-y-2">
               <div className="flex items-start gap-2 text-sm font-medium text-amber-800">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -197,10 +218,17 @@ export default function EventDetailPanel({
                 size="sm"
                 variant={myRsvpStatus === "going" ? "default" : "outline"}
                 onClick={() => onRsvp("going")}
-                disabled={rsvpLoading}
+                disabled={rsvpLoading || (registrationClosed && myRsvpStatus !== "going") || (isFull && myRsvpStatus !== "going")}
                 className="flex-1"
               >
-                <Check className="w-3 h-3 mr-1" />{myRsvpStatus === "going" ? "Registered" : "Going"}
+                <Check className="w-3 h-3 mr-1" />
+                {myRsvpStatus === "going"
+                  ? "Registered"
+                  : registrationClosed
+                  ? "Registration Closed"
+                  : isFull
+                  ? "Full"
+                  : "Going"}
               </Button>
               <Button
                 size="sm"
