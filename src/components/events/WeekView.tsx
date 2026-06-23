@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { startOfWeek, addDays, isSameDay, format, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Clock, MapPin, Video } from "lucide-react";
+import { getCategory, categoryStyles } from "./eventCategory";
 
 interface WeekEvent {
   id: string;
