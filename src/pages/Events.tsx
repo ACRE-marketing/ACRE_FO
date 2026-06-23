@@ -12,6 +12,7 @@ import WeekView from "@/components/events/WeekView";
 import EventDetailPanel from "@/components/events/EventDetailPanel";
 import CreateEventDialog from "@/components/events/CreateEventDialog";
 import { generateRecurringInstances, type RecurringTemplate } from "@/components/events/recurringEvents";
+import { getCategory, categoryLabel, categoryStyles } from "@/components/events/eventCategory";
 
 export default function Events() {
   const { user, isPM } = useAuth();
