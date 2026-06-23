@@ -230,7 +230,7 @@ export default function Events() {
                     <div className="text-xs font-medium text-destructive mb-2">必须参加 ({mandatoryEvents.length})</div>
                     <div className="space-y-2">
                       {mandatoryEvents.map((e: any) => (
-                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="mandatory" rsvpStatuses={rsvpStatuses} />
+                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="mandatory" goingCount={getGoingCount(e.id)} />
                       ))}
                     </div>
                   </div>
