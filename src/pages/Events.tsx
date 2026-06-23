@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { addMonths, subMonths, addWeeks, subWeeks, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isAfter, startOfDay } from "date-fns";
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { addMonths, subMonths, addWeeks, subWeeks, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isAfter, startOfDay, isSameDay, isToday } from "date-fns";
 import { toast } from "sonner";
 import CalendarGrid from "@/components/events/CalendarGrid";
 import WeekView from "@/components/events/WeekView";
@@ -21,8 +21,9 @@ export default function Events() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [upcomingTab, setUpcomingTab] = useState<"all" | "mine">("all");
+  const [upcomingExpanded, setUpcomingExpanded] = useState(false);
 
-  // Fetch events
   const { data: dbEvents = [], isLoading } = useQuery({
     queryKey: ["events"],
     queryFn: async () => {
@@ -31,7 +32,6 @@ export default function Events() {
     },
   });
 
-  // Fetch RSVPs
   const { data: rsvps = [] } = useQuery({
     queryKey: ["my-rsvps", user?.id],
     queryFn: async () => {
@@ -49,29 +49,23 @@ export default function Events() {
     },
   });
 
-  // Generate recurring instances
   const allEvents = useMemo(() => {
     const rangeStart = startOfWeek(startOfMonth(addMonths(currentDate, -1)));
-    const rangeEnd = endOfWeek(endOfMonth(addMonths(currentDate, 1)));
-
+    const rangeEnd = endOfWeek(endOfMonth(addMonths(currentDate, 2)));
     const recurringTemplates = dbEvents.filter((e: any) => e.is_recurring);
     const regularEvents = dbEvents.filter((e: any) => !e.is_recurring);
-
     const generatedInstances = recurringTemplates.flatMap((t: any) =>
       generateRecurringInstances(t as RecurringTemplate, rangeStart, rangeEnd)
     );
-
     return [...regularEvents, ...generatedInstances];
   }, [dbEvents, currentDate]);
 
-  // RSVP status map
   const rsvpStatuses = useMemo(() => {
     const map: Record<string, string> = {};
     rsvps.forEach((r: any) => { map[r.event_id] = r.status; });
     return map;
   }, [rsvps]);
 
-  // RSVP mutation
   const rsvpMutation = useMutation({
     mutationFn: async ({ eventId, status }: { eventId: string; status: string }) => {
       const { error } = await supabase.from("event_rsvps").upsert({
@@ -86,29 +80,41 @@ export default function Events() {
     },
   });
 
-  // Navigation
   const navigate = (dir: number) => {
     if (view === "month") setCurrentDate((d) => (dir > 0 ? addMonths(d, 1) : subMonths(d, 1)));
     else setCurrentDate((d) => (dir > 0 ? addWeeks(d, 1) : subWeeks(d, 1)));
   };
 
-  // Upcoming events (always shown in side panel) - dedupe recurring to nearest instance
-  const upcomingEvents = useMemo(() => {
+  // Events for currently-selected date (right panel)
+  const selectedDateEvents = useMemo(() => {
+    return allEvents
+      .filter((e: any) => isSameDay(new Date(e.start_time), selectedDate))
+      .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+  }, [allEvents, selectedDate]);
+
+  // Upcoming events (deduped recurring) — for bottom section
+  const upcomingAll = useMemo(() => {
     const today = startOfDay(new Date());
     const future = allEvents
-      .filter((e: any) => isAfter(new Date(e.start_time), today))
+      .filter((e: any) => isAfter(new Date(e.start_time), today) || isSameDay(new Date(e.start_time), today))
       .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-
     const seenRecurring = new Set<string>();
     return future.filter((e: any) => {
-      const templateId = e.template_id;
-      if (templateId) {
-        if (seenRecurring.has(templateId)) return false;
-        seenRecurring.add(templateId);
+      if (e.template_id) {
+        if (seenRecurring.has(e.template_id)) return false;
+        seenRecurring.add(e.template_id);
       }
       return true;
     });
   }, [allEvents]);
+
+  const upcomingMine = useMemo(
+    () => upcomingAll.filter((e: any) => rsvpStatuses[e.id] === "going" || e.is_mandatory),
+    [upcomingAll, rsvpStatuses]
+  );
+
+  const upcomingList = upcomingTab === "mine" ? upcomingMine : upcomingAll;
+  const visibleUpcoming = upcomingExpanded ? upcomingList : upcomingList.slice(0, 5);
 
   const getGoingCount = (eventId: string) =>
     allRsvps.filter((r: any) => r.event_id === eventId && r.status === "going").length;
@@ -127,8 +133,12 @@ export default function Events() {
     ? format(currentDate, "MMMM yyyy")
     : `${format(startOfWeek(currentDate), "MMM d")} – ${format(addDays(startOfWeek(currentDate), 6), "MMM d, yyyy")}`;
 
+  const sidePanelTitle = isToday(selectedDate)
+    ? "Today"
+    : format(selectedDate, "EEE, MMM d");
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold font-display">Events</h1>
@@ -150,7 +160,7 @@ export default function Events() {
         </Button>
         <h2 className="text-lg font-semibold">{headerLabel}</h2>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => { setCurrentDate(new Date()); setSelectedDate(new Date()); }} className="text-xs">
+          <Button variant="ghost" size="sm" onClick={() => { setCurrentDate(new Date()); setSelectedDate(new Date()); setSelectedEvent(null); }} className="text-xs">
             Today
           </Button>
           <Button variant="outline" size="icon" onClick={() => navigate(1)} className="h-8 w-8">
@@ -162,69 +172,123 @@ export default function Events() {
       {isLoading ? (
         <div className="h-64 bg-muted rounded-lg animate-pulse" />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {/* Calendar */}
-          <div className="lg:col-span-3">
-            {view === "month" ? (
-              <CalendarGrid
-                currentDate={currentDate}
-                selectedDate={selectedDate}
-                onSelectDate={(d) => { setSelectedDate(d); setSelectedEvent(null); }}
-                events={allEvents}
-                rsvpStatuses={rsvpStatuses}
-              />
-            ) : (
-              <WeekView
-                currentDate={currentDate}
-                selectedDate={selectedDate}
-                onSelectDate={(d) => { setSelectedDate(d); setSelectedEvent(null); }}
-                events={allEvents}
-                rsvpStatuses={rsvpStatuses}
-                onEventClick={handleEventClick}
-              />
-            )}
-          </div>
-
-          {/* Upcoming side panel - always shows upcoming, never date-filtered */}
-          <div className="lg:col-span-2 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Upcoming Events</h3>
-              {selectedEvent && (
-                <Button variant="ghost" size="sm" onClick={() => setSelectedEvent(null)} className="text-xs h-7">
-                  ← Back
-                </Button>
+        <>
+          {/* Calendar + Date side panel */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              {view === "month" ? (
+                <CalendarGrid
+                  currentDate={currentDate}
+                  selectedDate={selectedDate}
+                  onSelectDate={(d) => { setSelectedDate(d); setSelectedEvent(null); }}
+                  events={allEvents}
+                  rsvpStatuses={rsvpStatuses}
+                />
+              ) : (
+                <WeekView
+                  currentDate={currentDate}
+                  selectedDate={selectedDate}
+                  onSelectDate={(d) => { setSelectedDate(d); setSelectedEvent(null); }}
+                  events={allEvents}
+                  rsvpStatuses={rsvpStatuses}
+                  onEventClick={handleEventClick}
+                />
               )}
             </div>
 
-            {selectedEvent ? (
-              <EventDetailPanel
-                event={selectedEvent}
-                myRsvpStatus={rsvpStatuses[selectedEvent.id] ?? null}
-                goingCount={getGoingCount(selectedEvent.id)}
-                goingNames={getGoingNames(selectedEvent.id)}
-                onRsvp={(status) => rsvpMutation.mutate({ eventId: selectedEvent.id, status })}
-                rsvpLoading={rsvpMutation.isPending}
-              />
-            ) : upcomingEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No upcoming events</p>
-            ) : (
-              <div className="space-y-3 max-h-[calc(100vh-260px)] overflow-y-auto pr-1">
-                {upcomingEvents.map((e: any) => (
-                  <UpcomingEventCard
-                    key={e.id}
-                    event={e}
-                    goingCount={getGoingCount(e.id)}
-                    myRsvpStatus={rsvpStatuses[e.id] ?? null}
-                    onSignUp={() => rsvpMutation.mutate({ eventId: e.id, status: "going" })}
-                    onCancel={() => rsvpMutation.mutate({ eventId: e.id, status: "not_going" })}
-                    onOpen={() => setSelectedEvent(e)}
-                    rsvpLoading={rsvpMutation.isPending}
-                  />
-                ))}
+            {/* Right side panel — events on selected date */}
+            <aside className="lg:col-span-1 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                    <CalendarDays className="w-4 h-4" /> {sidePanelTitle}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedDateEvents.length} event{selectedDateEvents.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+                {selectedEvent && (
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedEvent(null)} className="text-xs h-7">
+                    ← Back
+                  </Button>
+                )}
               </div>
-            )}
+
+              {selectedEvent ? (
+                <EventDetailPanel
+                  event={selectedEvent}
+                  myRsvpStatus={rsvpStatuses[selectedEvent.id] ?? null}
+                  goingCount={getGoingCount(selectedEvent.id)}
+                  goingNames={getGoingNames(selectedEvent.id)}
+                  onRsvp={(status) => rsvpMutation.mutate({ eventId: selectedEvent.id, status })}
+                  rsvpLoading={rsvpMutation.isPending}
+                />
+              ) : selectedDateEvents.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border py-10 text-center">
+                  <p className="text-sm text-muted-foreground">No events on this day</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedDateEvents.map((e: any) => (
+                    <UpcomingEventCard
+                      key={e.id}
+                      event={e}
+                      goingCount={getGoingCount(e.id)}
+                      myRsvpStatus={rsvpStatuses[e.id] ?? null}
+                      onSignUp={() => rsvpMutation.mutate({ eventId: e.id, status: "going" })}
+                      onCancel={() => rsvpMutation.mutate({ eventId: e.id, status: "not_going" })}
+                      onOpen={() => setSelectedEvent(e)}
+                      rsvpLoading={rsvpMutation.isPending}
+                    />
+                  ))}
+                </div>
+              )}
+            </aside>
           </div>
-        </div>
+
+          {/* Upcoming events section */}
+          <section className="space-y-3 pt-2">
+            <div className="flex items-center justify-between border-b border-border pb-2">
+              <h3 className="text-base font-semibold">Upcoming Events</h3>
+              <Tabs value={upcomingTab} onValueChange={(v) => { setUpcomingTab(v as any); setUpcomingExpanded(false); }}>
+                <TabsList className="h-8">
+                  <TabsTrigger value="all" className="text-xs px-3">All ({upcomingAll.length})</TabsTrigger>
+                  <TabsTrigger value="mine" className="text-xs px-3">My signups ({upcomingMine.length})</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            {upcomingList.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                {upcomingTab === "mine" ? "You haven't signed up for any upcoming events" : "No upcoming events"}
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {visibleUpcoming.map((e: any) => (
+                    <UpcomingEventCard
+                      key={e.id}
+                      event={e}
+                      goingCount={getGoingCount(e.id)}
+                      myRsvpStatus={rsvpStatuses[e.id] ?? null}
+                      onSignUp={() => rsvpMutation.mutate({ eventId: e.id, status: "going" })}
+                      onCancel={() => rsvpMutation.mutate({ eventId: e.id, status: "not_going" })}
+                      onOpen={() => { setSelectedEvent(e); setSelectedDate(new Date(e.start_time)); }}
+                      rsvpLoading={rsvpMutation.isPending}
+                    />
+                  ))}
+                </div>
+                {upcomingList.length > 5 && (
+                  <div className="flex justify-center pt-2">
+                    <Button variant="outline" size="sm" onClick={() => setUpcomingExpanded((v) => !v)}>
+                      {upcomingExpanded ? "Show less" : `Expand to see all (${upcomingList.length})`}
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        </>
       )}
     </div>
   );
