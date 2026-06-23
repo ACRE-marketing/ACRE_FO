@@ -11,6 +11,7 @@ interface Props {
   onCancel: () => void;
   onOpen: () => void;
   rsvpLoading: boolean;
+  compact?: boolean;
 }
 
 function googleCalendarUrl(event: any) {
@@ -47,144 +48,117 @@ export default function UpcomingEventCard({
 
   const isGoing = myRsvpStatus === "going";
   const isRecurring = !!event.is_recurring;
-  // Recurring meetings auto-include everyone (no sign up needed)
   const noSignupNeeded = isRecurring;
 
   const minutesBefore = (start.getTime() - now.getTime()) / (1000 * 60);
   const isJoinWindowOpen = event.is_online && !!event.meeting_link && !isPast && minutesBefore <= 10;
 
   return (
-    <div className={`rounded-lg border border-l-4 bg-card ${styles.bar} overflow-hidden`}>
-      {/* Header */}
-      <button onClick={onOpen} className="w-full text-left px-4 pt-3 pb-2 hover:bg-muted/30 transition-colors">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-semibold text-sm leading-tight">{event.title}</h3>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${styles.chip}`}>
-            {categoryLabel[category]}
-          </span>
+    <div className={`rounded-lg border border-l-4 bg-card ${styles.bar} hover:shadow-sm transition-shadow`}>
+      {/* Header — click to open detail */}
+      <button onClick={onOpen} className="w-full text-left px-4 pt-3 pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${styles.chip}`}>
+                {categoryLabel[category]}
+              </span>
+              {event.lunch_included && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                  🥪 Lunch
+                </span>
+              )}
+              {isGoing && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200 inline-flex items-center gap-1">
+                  <Check className="w-2.5 h-2.5" /> Signed up
+                </span>
+              )}
+            </div>
+            <h3 className="font-semibold text-sm leading-snug truncate">{event.title}</h3>
+            {event.speaker && (
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{event.speaker}</p>
+            )}
+          </div>
         </div>
-        {event.speaker && (
-          <p className="text-xs text-muted-foreground mt-1">{event.speaker}</p>
-        )}
       </button>
 
-      {/* Description block (italic, multi-line) */}
-      {event.description && (
-        <div className="px-4 pb-2">
-          <div className="rounded-md bg-muted/40 border border-border/60 px-3 py-2 text-xs italic text-foreground/80 whitespace-pre-wrap leading-relaxed">
-            {event.description}
-          </div>
-        </div>
-      )}
-
-      {/* Body grid: time/location · signups/deadline · actions */}
-      <div className="px-4 pb-3 pt-1 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-x-4 gap-y-2 items-start">
-        {/* Time */}
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-            <Clock className="w-3 h-3" /> Time
-          </div>
-          <div className="text-xs mt-0.5">
-            {format(start, "MMM d, yyyy, h:mm a")}
-            {end && ` – ${format(end, "h:mm a")}`}
-          </div>
-        </div>
-
-        {/* Location / Online */}
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-            {event.is_online ? <Video className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
-            {event.is_online ? "Meeting" : "Location"}
-          </div>
-          <div className="text-xs mt-0.5 break-words">
+      {/* Meta row — inline, compact */}
+      <div className="px-4 pb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <Clock className="w-3 h-3" />
+          {format(start, "MMM d, h:mm a")}{end && `–${format(end, "h:mm a")}`}
+        </span>
+        <span className="inline-flex items-center gap-1 min-w-0">
+          {event.is_online ? <Video className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
+          <span className="truncate max-w-[180px]">
             {event.is_online
-              ? (event.meeting_link ? "Online via Zoom" : "Online")
+              ? (event.meeting_link ? "Online (Zoom)" : "Online")
               : (event.location || event.area || "TBD")}
-          </div>
-        </div>
-
-        {/* Actions column */}
-        <div className="flex flex-col gap-1.5 md:items-end md:min-w-[140px]">
-          {noSignupNeeded ? (
-            event.is_online && event.meeting_link ? (
-              <a href={event.meeting_link} target="_blank" rel="noopener noreferrer" className="w-full md:w-auto">
-                <Button size="sm" className={`w-full ${isJoinWindowOpen ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}`} variant={isJoinWindowOpen ? "default" : "outline"}>
-                  <Video className="w-3 h-3 mr-1" />
-                  {isJoinWindowOpen ? "Join now" : "Join meeting"}
-                </Button>
-              </a>
-            ) : (
-              <span className="text-[11px] text-muted-foreground">All team</span>
-            )
-          ) : isPast ? (
-            <Button size="sm" variant="outline" disabled className="w-full md:w-auto opacity-60">Event ended</Button>
-          ) : isGoing ? (
-            <>
-              <Button size="sm" variant="outline" onClick={onCancel} disabled={rsvpLoading} className="w-full md:w-auto">
-                Cancel signup
-              </Button>
-              <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer" className="w-full md:w-auto">
-                <Button size="sm" variant="outline" className="w-full">
-                  <CalendarPlus className="w-3 h-3 mr-1" /> Add to Google Calendar
-                </Button>
-              </a>
-              {event.is_online && event.meeting_link && isJoinWindowOpen && (
-                <a href={event.meeting_link} target="_blank" rel="noopener noreferrer" className="w-full md:w-auto">
-                  <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                    <Video className="w-3 h-3 mr-1" /> Join now
-                  </Button>
-                </a>
-              )}
-            </>
-          ) : (
-            <Button
-              size="sm"
-              onClick={onSignUp}
-              disabled={rsvpLoading || registrationClosed || isFull}
-              className="w-full md:w-auto"
-            >
-              {registrationClosed ? "Registration closed" : isFull ? "Full — Waitlist" : "Sign up"}
-            </Button>
-          )}
-        </div>
-
-        {/* Signups */}
+          </span>
+        </span>
         {!noSignupNeeded && (
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-              <Users className="w-3 h-3" /> Signups
-            </div>
-            <div className="text-xs mt-0.5 flex items-center gap-2">
-              <span className="tabular-nums">{goingCount}{hasCapacity ? ` / ${capacity}` : ""}</span>
-              {hasCapacity && (
-                <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden max-w-[80px]">
-                  <div className={`h-full ${isFull ? "bg-destructive" : styles.dot}`} style={{ width: `${Math.min(100, (goingCount / (capacity as number)) * 100)}%` }} />
-                </div>
-              )}
-              {isGoing && <Check className="w-3 h-3 text-green-600" />}
-            </div>
-          </div>
+          <span className="inline-flex items-center gap-1">
+            <Users className="w-3 h-3" />
+            <span className="tabular-nums">{goingCount}{hasCapacity ? `/${capacity}` : ""}</span>
+            {hasCapacity && (
+              <span className="inline-block w-12 h-1 bg-muted rounded-full overflow-hidden ml-1">
+                <span
+                  className={`block h-full ${isFull ? "bg-destructive" : styles.dot}`}
+                  style={{ width: `${Math.min(100, (goingCount / (capacity as number)) * 100)}%` }}
+                />
+              </span>
+            )}
+          </span>
         )}
-
-        {/* Deadline */}
-        {!noSignupNeeded && deadline && (
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-              <AlertCircle className="w-3 h-3" /> Deadline
-            </div>
-            <div className={`text-xs mt-0.5 ${registrationClosed ? "text-muted-foreground" : ""}`}>
-              {registrationClosed ? "Closed " : "Closes "}{format(deadline, "MMM d, yyyy, h:mm a")}
-            </div>
-          </div>
+        {!noSignupNeeded && deadline && !isPast && (
+          <span className={`inline-flex items-center gap-1 ${registrationClosed ? "" : "text-foreground/70"}`}>
+            <AlertCircle className="w-3 h-3" />
+            {registrationClosed ? "Closed" : `Closes ${format(deadline, "MMM d, h:mma")}`}
+          </span>
         )}
+      </div>
 
-        {/* Lunch chip spans if present */}
-        {event.lunch_included && (
-          <div className="md:col-span-3">
-            <span className="inline-block text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-              Lunch included
-            </span>
-          </div>
+      {/* Actions row */}
+      <div className="px-4 pb-3 pt-1 flex flex-wrap gap-2">
+        {noSignupNeeded ? (
+          event.is_online && event.meeting_link ? (
+            <a href={event.meeting_link} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" variant={isJoinWindowOpen ? "default" : "outline"} className={isJoinWindowOpen ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}>
+                <Video className="w-3 h-3 mr-1" />
+                {isJoinWindowOpen ? "Join now" : "Join meeting"}
+              </Button>
+            </a>
+          ) : (
+            <span className="text-xs text-muted-foreground">All team — no signup needed</span>
+          )
+        ) : isPast ? (
+          <Button size="sm" variant="outline" disabled className="opacity-60">Event ended</Button>
+        ) : isGoing ? (
+          <>
+            <Button size="sm" variant="outline" onClick={onCancel} disabled={rsvpLoading}>
+              Cancel signup
+            </Button>
+            <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" variant="ghost">
+                <CalendarPlus className="w-3 h-3 mr-1" /> Add to Calendar
+              </Button>
+            </a>
+            {event.is_online && event.meeting_link && isJoinWindowOpen && (
+              <a href={event.meeting_link} target="_blank" rel="noopener noreferrer">
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Video className="w-3 h-3 mr-1" /> Join now
+                </Button>
+              </a>
+            )}
+          </>
+        ) : (
+          <Button
+            size="sm"
+            onClick={onSignUp}
+            disabled={rsvpLoading || registrationClosed || isFull}
+          >
+            {registrationClosed ? "Registration closed" : isFull ? "Full — Waitlist" : "Sign up"}
+          </Button>
         )}
       </div>
     </div>
