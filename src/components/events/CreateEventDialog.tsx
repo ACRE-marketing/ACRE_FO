@@ -16,6 +16,7 @@ const INITIAL_FORM = {
   title: "", description: "", event_type: "activity", location: "", area: "",
   is_online: false, meeting_link: "", zoom_password: "", start_time: "", end_time: "",
   is_recurring: false, recurrence_rule: "", is_mandatory: false, external_rsvp_url: "",
+  capacity: "", rsvp_deadline: "", speaker: "", lunch_included: false,
 };
 
 export default function CreateEventDialog() {
@@ -80,6 +81,10 @@ export default function CreateEventDialog() {
         recurrence_rule: form.is_recurring ? form.recurrence_rule : null,
         is_mandatory: form.is_mandatory,
         external_rsvp_url: form.external_rsvp_url || null,
+        capacity: form.capacity ? parseInt(form.capacity, 10) : null,
+        rsvp_deadline: form.rsvp_deadline ? new Date(form.rsvp_deadline).toISOString() : null,
+        speaker: form.speaker || null,
+        lunch_included: form.lunch_included,
       } as any);
       if (error) throw error;
     },
@@ -193,6 +198,26 @@ export default function CreateEventDialog() {
             <Label>External RSVP URL</Label>
             <Input value={form.external_rsvp_url} onChange={(e) => set("external_rsvp_url", e.target.value)} placeholder="https://forms.office.com/..." />
             <p className="text-xs text-muted-foreground mt-1">If set, agents must complete external form before in-app registration counts.</p>
+          </div>
+
+          {/* Office-added event fields (training / tour) */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Capacity</Label>
+              <Input type="number" min={1} value={form.capacity} onChange={(e) => set("capacity", e.target.value)} placeholder="e.g. 50" />
+            </div>
+            <div>
+              <Label>RSVP Deadline</Label>
+              <Input type="datetime-local" value={form.rsvp_deadline} onChange={(e) => set("rsvp_deadline", e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label>Speaker / Host</Label>
+            <Input value={form.speaker} onChange={(e) => set("speaker", e.target.value)} placeholder="e.g. Winnie Wu (CPA)" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={form.lunch_included} onCheckedChange={(v) => set("lunch_included", v)} />
+            <Label>Lunch included</Label>
           </div>
 
           <Button onClick={() => createEvent.mutate()} disabled={!form.title || !form.start_time || createEvent.isPending} className="w-full">

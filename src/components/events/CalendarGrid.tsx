@@ -4,6 +4,7 @@ import {
   addDays, isSameMonth, isSameDay, format, isToday,
 } from "date-fns";
 import { cn } from "@/lib/utils";
+import { getCategory, categoryStyles } from "./eventCategory";
 
 interface CalendarEvent {
   id: string;
@@ -21,12 +22,6 @@ interface CalendarGridProps {
   events: CalendarEvent[];
   rsvpStatuses: Record<string, string>;
 }
-
-const typeColors: Record<string, string> = {
-  activity: "bg-primary",
-  training: "bg-blue-500",
-  admin: "bg-amber-500",
-};
 
 export default function CalendarGrid({
   currentDate, selectedDate, onSelectDate, events, rsvpStatuses,
@@ -104,20 +99,19 @@ export default function CalendarGrid({
                 <div className="mt-0.5 space-y-0.5">
                   {dayEvents.slice(0, 3).map((e) => {
                     const isMandatory = (e as any).is_mandatory;
-                    const isGoing = rsvpStatuses[e.id] === "going";
+                    const category = getCategory(e);
+                    const styles = categoryStyles[category];
                     return (
                       <div
                         key={e.id}
                         className={cn(
-                          "text-[10px] leading-tight truncate rounded px-1 py-0.5",
-                          isMandatory
-                            ? "bg-destructive/10 text-destructive"
-                            : isGoing
-                            ? "bg-green-100 text-green-700"
-                            : "bg-blue-50 text-blue-600",
+                          "text-[10px] leading-tight truncate rounded px-1 py-0.5 border flex items-center gap-1",
+                          styles.chip,
+                          isMandatory && "ring-1 ring-destructive/40",
                         )}
                       >
-                        {e.title}
+                        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", styles.dot)} />
+                        <span className="truncate">{e.title}</span>
                       </div>
                     );
                   })}

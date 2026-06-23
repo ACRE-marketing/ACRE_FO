@@ -183,6 +183,7 @@ export type Database = {
       events: {
         Row: {
           area: string | null
+          capacity: number | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -194,14 +195,18 @@ export type Database = {
           is_online: boolean | null
           is_recurring: boolean | null
           location: string | null
+          lunch_included: boolean | null
           meeting_link: string | null
           recurrence_rule: string | null
+          rsvp_deadline: string | null
+          speaker: string | null
           start_time: string
           title: string
           zoom_password: string | null
         }
         Insert: {
           area?: string | null
+          capacity?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -213,14 +218,18 @@ export type Database = {
           is_online?: boolean | null
           is_recurring?: boolean | null
           location?: string | null
+          lunch_included?: boolean | null
           meeting_link?: string | null
           recurrence_rule?: string | null
+          rsvp_deadline?: string | null
+          speaker?: string | null
           start_time: string
           title: string
           zoom_password?: string | null
         }
         Update: {
           area?: string | null
+          capacity?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -232,8 +241,11 @@ export type Database = {
           is_online?: boolean | null
           is_recurring?: boolean | null
           location?: string | null
+          lunch_included?: boolean | null
           meeting_link?: string | null
           recurrence_rule?: string | null
+          rsvp_deadline?: string | null
+          speaker?: string | null
           start_time?: string
           title?: string
           zoom_password?: string | null

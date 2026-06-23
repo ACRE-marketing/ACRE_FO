@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, Video, Check, X, ExternalLink, Lock, Users, AlertCircle } from "lucide-react";
+import { Calendar, Clock, MapPin, Video, Check, X, ExternalLink, Lock, Users, AlertCircle, Utensils, Mic } from "lucide-react";
 import { format } from "date-fns";
+import { getCategory, categoryLabel, categoryStyles } from "./eventCategory";
 
 interface EventDetailPanelProps {
   event: any;
@@ -29,30 +30,45 @@ export default function EventDetailPanel({
   const isZoomWindowOpen = minutesBefore <= 10 && !isPast;
   const isZoomWindowSoon = minutesBefore > 10; // future but not yet in window
 
-  const eventTypeLabels: Record<string, string> = {
-    activity: "Activity", training: "Training", admin: "Admin Notice",
-  };
+  const category = getCategory(event);
+  const styles = categoryStyles[category];
+
+  // Registration / capacity
+  const capacity = event.capacity as number | null | undefined;
+  const deadline = event.rsvp_deadline ? new Date(event.rsvp_deadline) : null;
+  const registrationClosed = deadline ? deadline < now : false;
+  const isFull = typeof capacity === "number" && capacity > 0 && goingCount >= capacity;
 
   return (
-    <Card className="border-border overflow-hidden">
+    <Card className={`border-border border-l-4 overflow-hidden ${styles.bar}`}>
       <CardContent className="p-0">
         {/* Header section */}
         <div className="p-4 pb-3 border-b border-border">
           <div className="flex items-center gap-1.5 flex-wrap mb-2">
+            <Badge className={`text-[10px] px-1.5 py-0 ${styles.badge}`}>
+              {categoryLabel[category]}
+            </Badge>
             {isMandatory && (
               <Badge variant="destructive" className="text-[10px] px-1.5 py-0">必须参加</Badge>
             )}
             {event.is_recurring && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">周期性</Badge>
             )}
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-              {eventTypeLabels[event.event_type] ?? event.event_type}
-            </Badge>
             {hasExternalRsvp && (
               <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-800 border-amber-200">External RSVP</Badge>
             )}
+            {event.lunch_included && (
+              <Badge className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">
+                <Utensils className="w-2.5 h-2.5 mr-0.5" />Lunch
+              </Badge>
+            )}
           </div>
           <h3 className="text-base font-semibold leading-snug break-words">{event.title}</h3>
+          {event.speaker && (
+            <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+              <Mic className="w-3 h-3" /> {event.speaker}
+            </div>
+          )}
         </div>
 
         {/* Details section */}
@@ -144,17 +160,38 @@ export default function EventDetailPanel({
             </div>
           )}
 
-          {/* Attendees */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="w-4 h-4 shrink-0" />
-            <span>{isMandatory ? "All team" : `${goingCount} going`}</span>
-            {goingNames.length > 0 && !isMandatory && (
-              <span className="text-xs truncate">({goingNames.slice(0, 5).join(", ")}{goingNames.length > 5 ? "..." : ""})</span>
+          {/* Attendees + capacity */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="w-4 h-4 shrink-0" />
+              <span>
+                {isMandatory
+                  ? "All team"
+                  : typeof capacity === "number" && capacity > 0
+                  ? `${goingCount} / ${capacity} registered`
+                  : `${goingCount} going`}
+              </span>
+              {goingNames.length > 0 && !isMandatory && (
+                <span className="text-xs truncate">({goingNames.slice(0, 5).join(", ")}{goingNames.length > 5 ? "..." : ""})</span>
+              )}
+            </div>
+            {typeof capacity === "number" && capacity > 0 && (
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className={`h-full ${isFull ? "bg-destructive" : styles.dot}`} style={{ width: `${Math.min(100, (goingCount / capacity) * 100)}%` }} />
+              </div>
+            )}
+            {deadline && !isPast && (
+              <div className={`flex items-center gap-1.5 text-xs ${registrationClosed ? "text-muted-foreground" : "text-amber-700"}`}>
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                {registrationClosed
+                  ? `Registration closed ${format(deadline, "MMM d, h:mm a")}`
+                  : `Registration closes ${format(deadline, "MMM d, h:mm a")}`}
+              </div>
             )}
           </div>
 
           {/* External RSVP notice */}
-          {hasExternalRsvp && !isGoing && !isPast && (
+          {hasExternalRsvp && !isGoing && !isPast && !registrationClosed && !isFull && (
             <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 space-y-2">
               <div className="flex items-start gap-2 text-sm font-medium text-amber-800">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -181,10 +218,17 @@ export default function EventDetailPanel({
                 size="sm"
                 variant={myRsvpStatus === "going" ? "default" : "outline"}
                 onClick={() => onRsvp("going")}
-                disabled={rsvpLoading}
+                disabled={rsvpLoading || (registrationClosed && myRsvpStatus !== "going") || (isFull && myRsvpStatus !== "going")}
                 className="flex-1"
               >
-                <Check className="w-3 h-3 mr-1" />{myRsvpStatus === "going" ? "Registered" : "Going"}
+                <Check className="w-3 h-3 mr-1" />
+                {myRsvpStatus === "going"
+                  ? "Registered"
+                  : registrationClosed
+                  ? "Registration Closed"
+                  : isFull
+                  ? "Full"
+                  : "Going"}
               </Button>
               <Button
                 size="sm"
