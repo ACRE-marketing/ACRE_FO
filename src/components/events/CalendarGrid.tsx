@@ -73,6 +73,7 @@ export default function CalendarGrid({
             (e) => !rsvpStatuses[e.id] && !(e as any).is_mandatory
           );
 
+          const hasHighlight = hasRsvpd;
           return (
             <button
               key={i}
@@ -82,6 +83,7 @@ export default function CalendarGrid({
                 !inMonth && "opacity-30",
                 selected && "bg-accent/10 ring-1 ring-accent ring-inset",
                 today && !selected && "bg-primary/5",
+                hasHighlight && !selected && !today && "bg-green-50/60",
               )}
             >
               <span
@@ -89,10 +91,14 @@ export default function CalendarGrid({
                   "inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium",
                   today && "bg-primary text-primary-foreground",
                   selected && !today && "bg-accent text-accent-foreground",
+                  hasHighlight && !today && !selected && "ring-1 ring-green-500 text-green-700",
                 )}
               >
                 {format(day, "d")}
               </span>
+              {hasHighlight && (
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-green-500" title="You're signed up" />
+              )}
 
               {/* Event dots */}
               {dayEvents.length > 0 && (
