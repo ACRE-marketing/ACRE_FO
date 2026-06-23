@@ -128,14 +128,16 @@ export default function UpcomingEventCard({
         </div>
 
         {/* Actions */}
-        <div className="mt-auto pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
+        <div className="mt-auto pt-2 border-t border-border flex flex-wrap items-center justify-between gap-1.5">
           {/* Primary action */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {!noSignupNeeded && (
               isPast ? (
-                <Button size="sm" variant="outline" disabled className="opacity-60">Event ended</Button>
+                <Button size="sm" variant="outline" disabled className="h-7 text-[10px] px-2.5 opacity-60">
+                  Event ended
+                </Button>
               ) : isGoing ? (
-                <Button size="sm" variant="outline" onClick={onCancel} disabled={rsvpLoading}>
+                <Button size="sm" variant="outline" onClick={onCancel} disabled={rsvpLoading} className="h-7 text-[10px] px-2.5">
                   Cancel signup
                 </Button>
               ) : (
@@ -143,6 +145,7 @@ export default function UpcomingEventCard({
                   size="sm"
                   onClick={onSignUp}
                   disabled={rsvpLoading || registrationClosed || isFull}
+                  className="h-7 text-[10px] px-2.5"
                 >
                   {registrationClosed ? "Closed" : isFull ? "Full — waitlist" : "Sign up"}
                 </Button>
@@ -162,25 +165,26 @@ export default function UpcomingEventCard({
                     size="sm"
                     variant={isJoinWindowOpen ? "default" : "outline"}
                     disabled={!isJoinWindowOpen}
+                    className="h-7 text-[10px] px-2.5"
                   >
-                    <Video className="w-3.5 h-3.5 mr-1.5" />
-                    {isJoinWindowOpen ? "Join meeting" : "Join meeting"}
+                    <Video className="w-3 h-3 mr-1" />
+                    Join meeting
                   </Button>
                 </a>
               ) : (
-                <Button size="sm" variant="outline" disabled title="Meeting link not uploaded yet">
-                  <Video className="w-3.5 h-3.5 mr-1.5" /> Join meeting
+                <Button size="sm" variant="outline" disabled title="Meeting link not uploaded yet" className="h-7 text-[10px] px-2.5">
+                  <Video className="w-3 h-3 mr-1" /> Join meeting
                 </Button>
               )
             )}
           </div>
 
           {/* Secondary actions */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             {isGoing && !isPast && (
               <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer">
-                <Button size="sm" variant="ghost" title="Add to Google Calendar">
-                  <CalendarPlus className="w-4 h-4" />
+                <Button size="sm" variant="ghost" title="Add to Google Calendar" className="h-7 w-7 p-0">
+                  <CalendarPlus className="w-3.5 h-3.5" />
                 </Button>
               </a>
             )}
@@ -191,14 +195,15 @@ export default function UpcomingEventCard({
                 onClick={copyMeetingLink}
                 disabled={!hasMeetingLink}
                 title={hasMeetingLink ? "Copy meeting link" : "Link not uploaded yet"}
+                className="h-7 w-7 p-0"
               >
-                <Copy className="w-4 h-4" />
+                <Copy className="w-3.5 h-3.5" />
               </Button>
             )}
           </div>
 
           {noSignupNeeded && !event.is_online && (
-            <span className="text-xs text-muted-foreground">All team — no signup needed</span>
+            <span className="text-[10px] text-muted-foreground">All team — no signup needed</span>
           )}
         </div>
       </div>
