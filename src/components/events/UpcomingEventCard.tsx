@@ -77,58 +77,58 @@ export default function UpcomingEventCard({
       {/* Category accent bar */}
       <div className={`w-1.5 shrink-0 ${styles.dot}`} />
 
-      <div className="flex-1 p-5 flex flex-col min-w-0">
+      <div className="flex-1 p-4 flex flex-col min-w-0">
         {/* Header: category + status */}
-        <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex items-start justify-between gap-3 mb-3">
           <span className={`text-[10px] px-2 py-0.5 rounded border uppercase tracking-wider font-semibold ${styles.chip}`}>
             {categoryLabel[category]}
           </span>
           {isGoing && (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-success shrink-0">
-              <Check className="w-3.5 h-3.5" /> Signed up
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-success shrink-0">
+              <Check className="w-3 h-3" /> Signed up
             </span>
           )}
         </div>
 
         {/* Title / speaker — click to open detail */}
         <button onClick={onOpen} className="text-left">
-          <h3 className="font-display text-lg font-semibold text-foreground leading-tight mb-1 line-clamp-2">
+          <h3 className="font-display text-sm font-semibold text-foreground leading-snug mb-0.5 line-clamp-2">
             {event.title}
           </h3>
           {event.speaker && (
-            <p className="text-sm text-muted-foreground">with {event.speaker}</p>
+            <p className="text-xs text-muted-foreground">with {event.speaker}</p>
           )}
         </button>
 
         {/* Note / description */}
         {event.description && (
-          <div className="mt-4 mb-5">
-            <p className="text-sm text-muted-foreground leading-relaxed italic border-l-2 border-accent/30 pl-3 whitespace-pre-wrap break-words">
+          <div className="mt-3 mb-4">
+            <p className="text-xs text-muted-foreground leading-relaxed italic border-l-2 border-accent/30 pl-3 whitespace-pre-wrap break-words">
               {event.description}
             </p>
           </div>
         )}
 
         {/* Meta grid */}
-        <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-6">
-          <MetaItem icon={<Clock className="w-4 h-4 text-accent" />} text={timeText} />
-          <MetaItem icon={event.is_online ? <Video className="w-4 h-4 text-accent" /> : <MapPin className="w-4 h-4 text-accent" />} text={locationText} />
+        <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-4">
+          <MetaItem icon={<Clock className="w-3.5 h-3.5 text-accent" />} text={timeText} />
+          <MetaItem icon={event.is_online ? <Video className="w-3.5 h-3.5 text-accent" /> : <MapPin className="w-3.5 h-3.5 text-accent" />} text={locationText} />
           {!noSignupNeeded && (
             <MetaItem
-              icon={<Users className="w-4 h-4 text-accent" />}
+              icon={<Users className="w-3.5 h-3.5 text-accent" />}
               text={hasCapacity ? `${goingCount}/${capacity} enrolled` : `${goingCount} going`}
             />
           )}
           {!noSignupNeeded && deadline && !isPast && (
             <MetaItem
-              icon={<AlertCircle className="w-4 h-4 text-accent" />}
+              icon={<AlertCircle className="w-3.5 h-3.5 text-accent" />}
               text={registrationClosed ? "Registration closed" : `Closes ${format(deadline, "MMM d, h:mma")}`}
             />
           )}
         </div>
 
         {/* Actions */}
-        <div className="mt-auto pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-auto pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
           {/* Primary action */}
           <div className="flex items-center gap-2">
             {!noSignupNeeded && (
