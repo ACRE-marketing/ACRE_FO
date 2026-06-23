@@ -11,8 +11,8 @@ import CalendarGrid from "@/components/events/CalendarGrid";
 import WeekView from "@/components/events/WeekView";
 import EventDetailPanel from "@/components/events/EventDetailPanel";
 import CreateEventDialog from "@/components/events/CreateEventDialog";
+import UpcomingEventCard from "@/components/events/UpcomingEventCard";
 import { generateRecurringInstances, type RecurringTemplate } from "@/components/events/recurringEvents";
-import { getCategory, categoryLabel, categoryStyles } from "@/components/events/eventCategory";
 
 export default function Events() {
   const { user, isPM } = useAuth();
@@ -92,22 +92,15 @@ export default function Events() {
     else setCurrentDate((d) => (dir > 0 ? addWeeks(d, 1) : subWeeks(d, 1)));
   };
 
-  // Events for selected date
-  const selectedDateEvents = useMemo(() =>
-    allEvents.filter((e: any) => isSameDay(new Date(e.start_time), selectedDate)),
-    [allEvents, selectedDate]
-  );
-
-  // Upcoming events - deduplicate recurring events (show only next instance per template)
+  // Upcoming events (always shown in side panel) - dedupe recurring to nearest instance
   const upcomingEvents = useMemo(() => {
     const today = startOfDay(new Date());
     const future = allEvents
       .filter((e: any) => isAfter(new Date(e.start_time), today))
       .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
-    // For recurring events, only keep the first (nearest) instance per template_id
     const seenRecurring = new Set<string>();
-    const deduped = future.filter((e: any) => {
+    return future.filter((e: any) => {
       const templateId = e.template_id;
       if (templateId) {
         if (seenRecurring.has(templateId)) return false;
@@ -115,18 +108,7 @@ export default function Events() {
       }
       return true;
     });
-
-    return deduped.slice(0, 5);
   }, [allEvents]);
-
-  // Which events to display in sidebar
-  const displayEvents = selectedDateEvents.length > 0 ? selectedDateEvents : upcomingEvents;
-  const isShowingUpcoming = selectedDateEvents.length === 0;
-
-  // Categorize
-  const mandatoryEvents = displayEvents.filter((e: any) => e.is_mandatory);
-  const registeredEvents = displayEvents.filter((e: any) => !e.is_mandatory && rsvpStatuses[e.id] === "going");
-  const pendingEvents = displayEvents.filter((e: any) => !e.is_mandatory && rsvpStatuses[e.id] !== "going");
 
   const getGoingCount = (eventId: string) =>
     allRsvps.filter((r: any) => r.event_id === eventId && r.status === "going").length;
@@ -180,9 +162,9 @@ export default function Events() {
       {isLoading ? (
         <div className="h-64 bg-muted rounded-lg animate-pulse" />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Calendar */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             {view === "month" ? (
               <CalendarGrid
                 currentDate={currentDate}
@@ -203,154 +185,47 @@ export default function Events() {
             )}
           </div>
 
-          {/* Side panel */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground">
-              {isShowingUpcoming ? "Upcoming Events" : format(selectedDate, "EEEE, MMM d")}
-            </h3>
+          {/* Upcoming side panel - always shows upcoming, never date-filtered */}
+          <div className="lg:col-span-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Upcoming Events</h3>
+              {selectedEvent && (
+                <Button variant="ghost" size="sm" onClick={() => setSelectedEvent(null)} className="text-xs h-7">
+                  ← Back
+                </Button>
+              )}
+            </div>
 
             {selectedEvent ? (
-              <div>
-                <Button variant="ghost" size="sm" onClick={() => setSelectedEvent(null)} className="mb-2 text-xs">
-                  ← Back to list
-                </Button>
-                <EventDetailPanel
-                  event={selectedEvent}
-                  myRsvpStatus={rsvpStatuses[selectedEvent.id] ?? null}
-                  goingCount={getGoingCount(selectedEvent.id)}
-                  goingNames={getGoingNames(selectedEvent.id)}
-                  onRsvp={(status) => rsvpMutation.mutate({ eventId: selectedEvent.id, status })}
-                  rsvpLoading={rsvpMutation.isPending}
-                />
-              </div>
+              <EventDetailPanel
+                event={selectedEvent}
+                myRsvpStatus={rsvpStatuses[selectedEvent.id] ?? null}
+                goingCount={getGoingCount(selectedEvent.id)}
+                goingNames={getGoingNames(selectedEvent.id)}
+                onRsvp={(status) => rsvpMutation.mutate({ eventId: selectedEvent.id, status })}
+                rsvpLoading={rsvpMutation.isPending}
+              />
+            ) : upcomingEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">No upcoming events</p>
             ) : (
-              <>
-                {mandatoryEvents.length > 0 && (
-                  <div>
-                    <div className="text-xs font-medium text-destructive mb-2">必须参加 ({mandatoryEvents.length})</div>
-                    <div className="space-y-2">
-                      {mandatoryEvents.map((e: any) => (
-                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="mandatory" goingCount={getGoingCount(e.id)} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {registeredEvents.length > 0 && (
-                  <div>
-                    <div className="text-xs font-medium text-green-600 mb-2">已报名 ({registeredEvents.length})</div>
-                    <div className="space-y-2">
-                      {registeredEvents.map((e: any) => (
-                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="going" goingCount={getGoingCount(e.id)} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {pendingEvents.length > 0 && (
-                  <div>
-                    <div className="text-xs font-medium text-blue-600 mb-2">待报名 ({pendingEvents.length})</div>
-                    <div className="space-y-2">
-                      {pendingEvents.map((e: any) => (
-                        <EventQuickCard key={e.id} event={e} onClick={() => setSelectedEvent(e)} status="pending" goingCount={getGoingCount(e.id)} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {displayEvents.length === 0 && (
-                  <p className="text-sm text-muted-foreground py-8 text-center">No upcoming events</p>
-                )}
-              </>
+              <div className="space-y-3 max-h-[calc(100vh-260px)] overflow-y-auto pr-1">
+                {upcomingEvents.map((e: any) => (
+                  <UpcomingEventCard
+                    key={e.id}
+                    event={e}
+                    goingCount={getGoingCount(e.id)}
+                    myRsvpStatus={rsvpStatuses[e.id] ?? null}
+                    onSignUp={() => rsvpMutation.mutate({ eventId: e.id, status: "going" })}
+                    onCancel={() => rsvpMutation.mutate({ eventId: e.id, status: "not_going" })}
+                    onOpen={() => setSelectedEvent(e)}
+                    rsvpLoading={rsvpMutation.isPending}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </div>
       )}
     </div>
-  );
-}
-
-function EventQuickCard({ event, onClick, status, goingCount }: { event: any; onClick: () => void; status: string; goingCount: number }) {
-  const isRegistered = status === "going" || status === "mandatory";
-  const now = new Date();
-  const startTime = new Date(event.start_time);
-  const isPast = startTime < now;
-  const minutesBefore = (startTime.getTime() - now.getTime()) / (1000 * 60);
-  const isZoomWindowOpen = minutesBefore <= 10 && !isPast;
-
-  const category = getCategory(event);
-  const styles = categoryStyles[category];
-
-  // Registration status
-  const deadline = event.rsvp_deadline ? new Date(event.rsvp_deadline) : null;
-  const registrationClosed = deadline ? deadline < now : false;
-  const capacity = event.capacity as number | null | undefined;
-  const isFull = typeof capacity === "number" && capacity > 0 && goingCount >= capacity;
-
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full text-left rounded-lg border border-l-4 p-3 transition-colors hover:shadow-sm ${styles.bar} ${
-        status === "mandatory"
-          ? "bg-destructive/5 hover:bg-destructive/10"
-          : status === "going"
-          ? "bg-green-50 hover:bg-green-100"
-          : "bg-card hover:bg-muted/50"
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="font-medium text-sm truncate flex-1">{event.title}</div>
-        <span className={`text-[10px] px-1.5 py-0.5 rounded border shrink-0 ${styles.chip}`}>
-          {categoryLabel[category]}
-        </span>
-      </div>
-      <div className="text-xs text-muted-foreground mt-0.5">
-        {format(new Date(event.start_time), "MMM d · h:mm a")}
-        {event.is_online && " · Online"}
-        {!event.is_online && event.area && !isRegistered && ` · ${event.area}`}
-        {!event.is_online && event.location && isRegistered && ` · ${event.location}`}
-        {!event.is_online && !event.area && event.location && !isRegistered && ` · TBD`}
-      </div>
-      {event.speaker && (
-        <div className="text-xs text-muted-foreground mt-0.5">Speaker: {event.speaker}</div>
-      )}
-      {(event.lunch_included || (event.event_type === "training" && !event.is_online)) && (
-        <div className="mt-1 flex flex-wrap gap-1">
-          {event.lunch_included && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">Lunch included</span>
-          )}
-        </div>
-      )}
-      {typeof capacity === "number" && capacity > 0 && (
-        <div className="mt-1.5 flex items-center gap-1.5">
-          <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
-            <div className={`h-full ${isFull ? "bg-destructive" : styles.dot}`} style={{ width: `${Math.min(100, (goingCount / capacity) * 100)}%` }} />
-          </div>
-          <span className="text-[10px] text-muted-foreground tabular-nums">{goingCount} / {capacity}</span>
-        </div>
-      )}
-      {status === "mandatory" && event.is_online && event.meeting_link && isZoomWindowOpen && (
-        <a
-          href={event.meeting_link}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1 mt-1.5 text-xs text-blue-600 hover:underline"
-        >
-          Join Zoom →
-        </a>
-      )}
-      {status === "mandatory" && event.is_online && event.meeting_link && isPast && (
-        <span className="inline-flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-          Meeting ended
-        </span>
-      )}
-      {event.external_rsvp_url && status === "pending" && !registrationClosed && !isFull && (
-        <div className="mt-1 text-xs text-amber-600 font-medium">External RSVP required</div>
-      )}
-      {registrationClosed && status === "pending" && (
-        <div className="mt-1 text-xs text-muted-foreground font-medium">Registration closed</div>
-      )}
-      {isFull && status === "pending" && !registrationClosed && (
-        <div className="mt-1 text-xs text-destructive font-medium">Full — Waitlist</div>
-      )}
-    </button>
   );
 }
