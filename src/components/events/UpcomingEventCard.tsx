@@ -77,11 +77,6 @@ export default function UpcomingEventCard({
               <span className={`text-[10px] px-1.5 py-0.5 rounded border ${styles.chip}`}>
                 {categoryLabel[category]}
               </span>
-              {event.lunch_included && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                  🥪 Lunch
-                </span>
-              )}
               {isGoing && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200 inline-flex items-center gap-1">
                   <Check className="w-2.5 h-2.5" /> Signed up
