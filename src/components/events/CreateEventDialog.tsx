@@ -16,6 +16,7 @@ const INITIAL_FORM = {
   title: "", description: "", event_type: "activity", location: "", area: "",
   is_online: false, meeting_link: "", zoom_password: "", start_time: "", end_time: "",
   is_recurring: false, recurrence_rule: "", is_mandatory: false, external_rsvp_url: "",
+  capacity: "", rsvp_deadline: "", speaker: "", lunch_included: false,
 };
 
 export default function CreateEventDialog() {
