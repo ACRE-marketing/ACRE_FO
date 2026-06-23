@@ -200,6 +200,26 @@ export default function CreateEventDialog() {
             <p className="text-xs text-muted-foreground mt-1">If set, agents must complete external form before in-app registration counts.</p>
           </div>
 
+          {/* Office-added event fields (training / tour) */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Capacity</Label>
+              <Input type="number" min={1} value={form.capacity} onChange={(e) => set("capacity", e.target.value)} placeholder="e.g. 50" />
+            </div>
+            <div>
+              <Label>RSVP Deadline</Label>
+              <Input type="datetime-local" value={form.rsvp_deadline} onChange={(e) => set("rsvp_deadline", e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label>Speaker / Host</Label>
+            <Input value={form.speaker} onChange={(e) => set("speaker", e.target.value)} placeholder="e.g. Winnie Wu (CPA)" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={form.lunch_included} onCheckedChange={(v) => set("lunch_included", v)} />
+            <Label>Lunch included</Label>
+          </div>
+
           <Button onClick={() => createEvent.mutate()} disabled={!form.title || !form.start_time || createEvent.isPending} className="w-full">
             {createEvent.isPending ? "Creating..." : "Create Event"}
           </Button>
