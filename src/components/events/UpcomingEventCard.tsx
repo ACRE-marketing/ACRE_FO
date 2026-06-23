@@ -67,139 +67,150 @@ export default function UpcomingEventCard({
     }
   };
 
+  const timeText = `${format(start, "MMM d, h:mm a")}${end ? ` – ${format(end, "h:mm a")}` : ""}`;
+  const locationText = event.is_online
+    ? (hasMeetingLink ? "Online (Zoom)" : "Online — link TBD")
+    : (event.location || event.area || "TBD");
+
   return (
-    <div className={`rounded-lg border border-l-4 bg-card ${styles.bar} hover:shadow-sm transition-shadow`}>
-      {/* Header — click to open detail */}
-      <button onClick={onOpen} className="w-full text-left px-4 pt-3 pb-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${styles.chip}`}>
-                {categoryLabel[category]}
-              </span>
-              {isGoing && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200 inline-flex items-center gap-1">
-                  <Check className="w-2.5 h-2.5" /> Signed up
-                </span>
-              )}
-            </div>
-            <h3 className="font-semibold text-sm leading-snug truncate">{event.title}</h3>
-            {event.speaker && (
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">{event.speaker}</p>
-            )}
-          </div>
+    <div className="group flex rounded-lg border border-border bg-card shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+      {/* Category accent bar */}
+      <div className={`w-1.5 shrink-0 ${styles.dot}`} />
+
+      <div className="flex-1 p-5 flex flex-col min-w-0">
+        {/* Header: category + status */}
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <span className={`text-[10px] px-2 py-0.5 rounded border uppercase tracking-wider font-semibold ${styles.chip}`}>
+            {categoryLabel[category]}
+          </span>
+          {isGoing && (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-success shrink-0">
+              <Check className="w-3.5 h-3.5" /> Signed up
+            </span>
+          )}
         </div>
-      </button>
 
-      {/* Notes / description */}
-      {event.description && (
-        <div className="px-4 pb-2">
-          <div className="rounded-md bg-muted/40 border border-border/60 px-3 py-2 text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed break-words">
-            {event.description}
+        {/* Title / speaker — click to open detail */}
+        <button onClick={onOpen} className="text-left">
+          <h3 className="font-display text-lg font-semibold text-foreground leading-tight mb-1 line-clamp-2">
+            {event.title}
+          </h3>
+          {event.speaker && (
+            <p className="text-sm text-muted-foreground">with {event.speaker}</p>
+          )}
+        </button>
+
+        {/* Note / description */}
+        {event.description && (
+          <div className="mt-4 mb-5">
+            <p className="text-sm text-muted-foreground leading-relaxed italic border-l-2 border-accent/30 pl-3 whitespace-pre-wrap break-words">
+              {event.description}
+            </p>
           </div>
+        )}
+
+        {/* Meta grid */}
+        <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-6">
+          <MetaItem icon={<Clock className="w-4 h-4 text-accent" />} text={timeText} />
+          <MetaItem icon={event.is_online ? <Video className="w-4 h-4 text-accent" /> : <MapPin className="w-4 h-4 text-accent" />} text={locationText} />
+          {!noSignupNeeded && (
+            <MetaItem
+              icon={<Users className="w-4 h-4 text-accent" />}
+              text={hasCapacity ? `${goingCount}/${capacity} enrolled` : `${goingCount} going`}
+            />
+          )}
+          {!noSignupNeeded && deadline && !isPast && (
+            <MetaItem
+              icon={<AlertCircle className="w-4 h-4 text-accent" />}
+              text={registrationClosed ? "Registration closed" : `Closes ${format(deadline, "MMM d, h:mma")}`}
+            />
+          )}
         </div>
-      )}
 
-      {/* Meta row — inline, compact */}
-      <div className="px-4 pb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1">
-          <Clock className="w-3 h-3" />
-          {format(start, "MMM d, h:mm a")}{end && `–${format(end, "h:mm a")}`}
-        </span>
-        <span className="inline-flex items-center gap-1 min-w-0">
-          {event.is_online ? <Video className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
-          <span className="truncate max-w-[180px]">
-            {event.is_online
-              ? (hasMeetingLink ? "Online (Zoom)" : "Online — link TBD")
-              : (event.location || event.area || "TBD")}
-          </span>
-        </span>
-        {!noSignupNeeded && (
-          <span className="inline-flex items-center gap-1">
-            <Users className="w-3 h-3" />
-            <span className="tabular-nums">{goingCount}{hasCapacity ? `/${capacity}` : ""}</span>
-            {hasCapacity && (
-              <span className="inline-block w-12 h-1 bg-muted rounded-full overflow-hidden ml-1">
-                <span
-                  className={`block h-full ${isFull ? "bg-destructive" : styles.dot}`}
-                  style={{ width: `${Math.min(100, (goingCount / (capacity as number)) * 100)}%` }}
-                />
-              </span>
-            )}
-          </span>
-        )}
-        {!noSignupNeeded && deadline && !isPast && (
-          <span className={`inline-flex items-center gap-1 ${registrationClosed ? "" : "text-foreground/70"}`}>
-            <AlertCircle className="w-3 h-3" />
-            {registrationClosed ? "Closed" : `Closes ${format(deadline, "MMM d, h:mma")}`}
-          </span>
-        )}
-      </div>
-
-      {/* Actions row */}
-      <div className="px-4 pb-3 pt-1 flex flex-wrap gap-2">
-        {/* Signup / cancel logic */}
-        {!noSignupNeeded && (
-          isPast ? (
-            <Button size="sm" variant="outline" disabled className="opacity-60">Event ended</Button>
-          ) : isGoing ? (
-            <>
-              <Button size="sm" variant="outline" onClick={onCancel} disabled={rsvpLoading}>
-                Cancel signup
-              </Button>
-              <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer">
-                <Button size="sm" variant="ghost">
-                  <CalendarPlus className="w-3 h-3 mr-1" /> Add to Calendar
+        {/* Actions */}
+        <div className="mt-auto pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3">
+          {/* Primary action */}
+          <div className="flex items-center gap-2">
+            {!noSignupNeeded && (
+              isPast ? (
+                <Button size="sm" variant="outline" disabled className="opacity-60">Event ended</Button>
+              ) : isGoing ? (
+                <Button size="sm" variant="outline" onClick={onCancel} disabled={rsvpLoading}>
+                  Cancel signup
                 </Button>
-              </a>
-            </>
-          ) : (
-            <Button
-              size="sm"
-              onClick={onSignUp}
-              disabled={rsvpLoading || registrationClosed || isFull}
-            >
-              {registrationClosed ? "Registration closed" : isFull ? "Full — Waitlist" : "Sign up"}
-            </Button>
-          )
-        )}
-
-        {/* Online meeting controls — for recurring (no-signup) OR registered users */}
-        {showMeetingControls && !isPast && (
-          <>
-            {hasMeetingLink ? (
-              <a href={event.meeting_link} target="_blank" rel="noopener noreferrer" aria-disabled={!isJoinWindowOpen} onClick={(e) => { if (!isJoinWindowOpen) e.preventDefault(); }}>
+              ) : (
                 <Button
                   size="sm"
-                  variant={isJoinWindowOpen ? "default" : "outline"}
-                  disabled={!isJoinWindowOpen}
-                  className={isJoinWindowOpen ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}
+                  onClick={onSignUp}
+                  disabled={rsvpLoading || registrationClosed || isFull}
                 >
-                  <Video className="w-3 h-3 mr-1" />
-                  {isJoinWindowOpen ? "Join meeting" : "Join meeting"}
+                  {registrationClosed ? "Closed" : isFull ? "Full — waitlist" : "Sign up"}
+                </Button>
+              )
+            )}
+
+            {showMeetingControls && !isPast && (
+              hasMeetingLink ? (
+                <a
+                  href={event.meeting_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-disabled={!isJoinWindowOpen}
+                  onClick={(e) => { if (!isJoinWindowOpen) e.preventDefault(); }}
+                >
+                  <Button
+                    size="sm"
+                    variant={isJoinWindowOpen ? "default" : "outline"}
+                    disabled={!isJoinWindowOpen}
+                  >
+                    <Video className="w-3.5 h-3.5 mr-1.5" />
+                    {isJoinWindowOpen ? "Join meeting" : "Join meeting"}
+                  </Button>
+                </a>
+              ) : (
+                <Button size="sm" variant="outline" disabled title="Meeting link not uploaded yet">
+                  <Video className="w-3.5 h-3.5 mr-1.5" /> Join meeting
+                </Button>
+              )
+            )}
+          </div>
+
+          {/* Secondary actions */}
+          <div className="flex items-center gap-1">
+            {isGoing && !isPast && (
+              <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer">
+                <Button size="sm" variant="ghost" title="Add to Google Calendar">
+                  <CalendarPlus className="w-4 h-4" />
                 </Button>
               </a>
-            ) : (
-              <Button size="sm" variant="outline" disabled title="Meeting link not uploaded yet">
-                <Video className="w-3 h-3 mr-1" /> Join meeting
+            )}
+            {showMeetingControls && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={copyMeetingLink}
+                disabled={!hasMeetingLink}
+                title={hasMeetingLink ? "Copy meeting link" : "Link not uploaded yet"}
+              >
+                <Copy className="w-4 h-4" />
               </Button>
             )}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={copyMeetingLink}
-              disabled={!hasMeetingLink}
-              title={hasMeetingLink ? "Copy meeting link" : "Link not uploaded yet"}
-            >
-              <Copy className="w-3 h-3 mr-1" /> Copy link
-            </Button>
-          </>
-        )}
+          </div>
 
-        {noSignupNeeded && !event.is_online && (
-          <span className="text-xs text-muted-foreground self-center">All team — no signup needed</span>
-        )}
+          {noSignupNeeded && !event.is_online && (
+            <span className="text-xs text-muted-foreground">All team — no signup needed</span>
+          )}
+        </div>
       </div>
+    </div>
+  );
+}
+
+function MetaItem({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <span className="shrink-0">{icon}</span>
+      <span className="text-xs text-muted-foreground font-medium truncate">{text}</span>
     </div>
   );
 }
