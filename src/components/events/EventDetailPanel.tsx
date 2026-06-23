@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, Video, Check, X, ExternalLink, Lock, Users, AlertCircle } from "lucide-react";
+import { Calendar, Clock, MapPin, Video, Check, X, ExternalLink, Lock, Users, AlertCircle, Utensils, Mic } from "lucide-react";
 import { format } from "date-fns";
+import { getCategory, categoryLabel, categoryStyles } from "./eventCategory";
 
 interface EventDetailPanelProps {
   event: any;
