@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Clock, MapPin, Users, AlertCircle, Video, CalendarPlus, Check } from "lucide-react";
+import { Clock, MapPin, Users, AlertCircle, Video, CalendarPlus, Check, Copy } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
 import { getCategory, categoryLabel, categoryStyles } from "./eventCategory";
 
 interface Props {
@@ -51,7 +52,20 @@ export default function UpcomingEventCard({
   const noSignupNeeded = isRecurring;
 
   const minutesBefore = (start.getTime() - now.getTime()) / (1000 * 60);
-  const isJoinWindowOpen = event.is_online && !!event.meeting_link && !isPast && minutesBefore <= 10;
+  const hasMeetingLink = !!event.meeting_link;
+  const isJoinWindowOpen = event.is_online && hasMeetingLink && !isPast && minutesBefore <= 10;
+  const showMeetingControls = event.is_online && (noSignupNeeded || isGoing);
+
+  const copyMeetingLink = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!hasMeetingLink) return;
+    try {
+      await navigator.clipboard.writeText(event.meeting_link);
+      toast.success("Meeting link copied");
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
 
   return (
     <div className={`rounded-lg border border-l-4 bg-card ${styles.bar} hover:shadow-sm transition-shadow`}>
@@ -82,6 +96,15 @@ export default function UpcomingEventCard({
         </div>
       </button>
 
+      {/* Notes / description */}
+      {event.description && (
+        <div className="px-4 pb-2">
+          <div className="rounded-md bg-muted/40 border border-border/60 px-3 py-2 text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed line-clamp-5">
+            {event.description}
+          </div>
+        </div>
+      )}
+
       {/* Meta row — inline, compact */}
       <div className="px-4 pb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1">
@@ -92,7 +115,7 @@ export default function UpcomingEventCard({
           {event.is_online ? <Video className="w-3 h-3" /> : <MapPin className="w-3 h-3" />}
           <span className="truncate max-w-[180px]">
             {event.is_online
-              ? (event.meeting_link ? "Online (Zoom)" : "Online")
+              ? (hasMeetingLink ? "Online (Zoom)" : "Online — link TBD")
               : (event.location || event.area || "TBD")}
           </span>
         </span>
@@ -120,45 +143,66 @@ export default function UpcomingEventCard({
 
       {/* Actions row */}
       <div className="px-4 pb-3 pt-1 flex flex-wrap gap-2">
-        {noSignupNeeded ? (
-          event.is_online && event.meeting_link ? (
-            <a href={event.meeting_link} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" variant={isJoinWindowOpen ? "default" : "outline"} className={isJoinWindowOpen ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}>
-                <Video className="w-3 h-3 mr-1" />
-                {isJoinWindowOpen ? "Join now" : "Join meeting"}
+        {/* Signup / cancel logic */}
+        {!noSignupNeeded && (
+          isPast ? (
+            <Button size="sm" variant="outline" disabled className="opacity-60">Event ended</Button>
+          ) : isGoing ? (
+            <>
+              <Button size="sm" variant="outline" onClick={onCancel} disabled={rsvpLoading}>
+                Cancel signup
               </Button>
-            </a>
-          ) : (
-            <span className="text-xs text-muted-foreground">All team — no signup needed</span>
-          )
-        ) : isPast ? (
-          <Button size="sm" variant="outline" disabled className="opacity-60">Event ended</Button>
-        ) : isGoing ? (
-          <>
-            <Button size="sm" variant="outline" onClick={onCancel} disabled={rsvpLoading}>
-              Cancel signup
-            </Button>
-            <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" variant="ghost">
-                <CalendarPlus className="w-3 h-3 mr-1" /> Add to Calendar
-              </Button>
-            </a>
-            {event.is_online && event.meeting_link && isJoinWindowOpen && (
-              <a href={event.meeting_link} target="_blank" rel="noopener noreferrer">
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                  <Video className="w-3 h-3 mr-1" /> Join now
+              <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer">
+                <Button size="sm" variant="ghost">
+                  <CalendarPlus className="w-3 h-3 mr-1" /> Add to Calendar
                 </Button>
               </a>
+            </>
+          ) : (
+            <Button
+              size="sm"
+              onClick={onSignUp}
+              disabled={rsvpLoading || registrationClosed || isFull}
+            >
+              {registrationClosed ? "Registration closed" : isFull ? "Full — Waitlist" : "Sign up"}
+            </Button>
+          )
+        )}
+
+        {/* Online meeting controls — for recurring (no-signup) OR registered users */}
+        {showMeetingControls && !isPast && (
+          <>
+            {hasMeetingLink ? (
+              <a href={event.meeting_link} target="_blank" rel="noopener noreferrer" aria-disabled={!isJoinWindowOpen} onClick={(e) => { if (!isJoinWindowOpen) e.preventDefault(); }}>
+                <Button
+                  size="sm"
+                  variant={isJoinWindowOpen ? "default" : "outline"}
+                  disabled={!isJoinWindowOpen}
+                  className={isJoinWindowOpen ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}
+                >
+                  <Video className="w-3 h-3 mr-1" />
+                  {isJoinWindowOpen ? "Join meeting" : "Join meeting"}
+                </Button>
+              </a>
+            ) : (
+              <Button size="sm" variant="outline" disabled title="Meeting link not uploaded yet">
+                <Video className="w-3 h-3 mr-1" /> Join meeting
+              </Button>
             )}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={copyMeetingLink}
+              disabled={!hasMeetingLink}
+              title={hasMeetingLink ? "Copy meeting link" : "Link not uploaded yet"}
+            >
+              <Copy className="w-3 h-3 mr-1" /> Copy link
+            </Button>
           </>
-        ) : (
-          <Button
-            size="sm"
-            onClick={onSignUp}
-            disabled={rsvpLoading || registrationClosed || isFull}
-          >
-            {registrationClosed ? "Registration closed" : isFull ? "Full — Waitlist" : "Sign up"}
-          </Button>
+        )}
+
+        {noSignupNeeded && !event.is_online && (
+          <span className="text-xs text-muted-foreground self-center">All team — no signup needed</span>
         )}
       </div>
     </div>
