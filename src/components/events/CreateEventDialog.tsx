@@ -16,7 +16,7 @@ const INITIAL_FORM = {
   title: "", description: "", event_type: "activity", location: "", area: "",
   is_online: false, meeting_link: "", zoom_password: "", start_time: "", end_time: "",
   is_recurring: false, recurrence_rule: "", is_mandatory: false, external_rsvp_url: "",
-  capacity: "", rsvp_deadline: "", speaker: "", lunch_included: false,
+  capacity: "", rsvp_deadline: "", speaker: "",
 };
 
 export default function CreateEventDialog() {
@@ -84,7 +84,6 @@ export default function CreateEventDialog() {
         capacity: form.capacity ? parseInt(form.capacity, 10) : null,
         rsvp_deadline: form.rsvp_deadline ? new Date(form.rsvp_deadline).toISOString() : null,
         speaker: form.speaker || null,
-        lunch_included: form.lunch_included,
       } as any);
       if (error) throw error;
     },
@@ -214,10 +213,6 @@ export default function CreateEventDialog() {
           <div>
             <Label>Speaker / Host</Label>
             <Input value={form.speaker} onChange={(e) => set("speaker", e.target.value)} placeholder="e.g. Winnie Wu (CPA)" />
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch checked={form.lunch_included} onCheckedChange={(v) => set("lunch_included", v)} />
-            <Label>Lunch included</Label>
           </div>
 
           <Button onClick={() => createEvent.mutate()} disabled={!form.title || !form.start_time || createEvent.isPending} className="w-full">

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, Video, Check, X, ExternalLink, Lock, Users, AlertCircle, Utensils, Mic } from "lucide-react";
+import { Calendar, Clock, MapPin, Video, Check, X, ExternalLink, Lock, Users, AlertCircle, Mic } from "lucide-react";
 import { format } from "date-fns";
 import { getCategory, categoryLabel, categoryStyles } from "./eventCategory";
 
@@ -53,11 +53,6 @@ export default function EventDetailPanel({
             )}
             {hasExternalRsvp && (
               <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-800 border-amber-200">External RSVP</Badge>
-            )}
-            {event.lunch_included && (
-              <Badge className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">
-                <Utensils className="w-2.5 h-2.5 mr-0.5" />Lunch
-              </Badge>
             )}
           </div>
           <h3 className="text-base font-semibold leading-snug break-words">{event.title}</h3>
