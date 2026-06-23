@@ -81,6 +81,10 @@ export default function CreateEventDialog() {
         recurrence_rule: form.is_recurring ? form.recurrence_rule : null,
         is_mandatory: form.is_mandatory,
         external_rsvp_url: form.external_rsvp_url || null,
+        capacity: form.capacity ? parseInt(form.capacity, 10) : null,
+        rsvp_deadline: form.rsvp_deadline ? new Date(form.rsvp_deadline).toISOString() : null,
+        speaker: form.speaker || null,
+        lunch_included: form.lunch_included,
       } as any);
       if (error) throw error;
     },
