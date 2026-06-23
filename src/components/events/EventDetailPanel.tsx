@@ -48,11 +48,8 @@ export default function EventDetailPanel({
             <Badge className={`text-[10px] px-1.5 py-0 ${styles.badge}`}>
               {categoryLabel[category]}
             </Badge>
-            {isMandatory && (
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">必须参加</Badge>
-            )}
             {event.is_recurring && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">周期性</Badge>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Recurring</Badge>
             )}
             {hasExternalRsvp && (
               <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-800 border-amber-200">External RSVP</Badge>

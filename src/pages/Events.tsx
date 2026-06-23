@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { addMonths, subMonths, addWeeks, subWeeks, format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isAfter, startOfDay } from "date-fns";
+import { addMonths, subMonths, addWeeks, subWeeks, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isAfter, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import CalendarGrid from "@/components/events/CalendarGrid";
 import WeekView from "@/components/events/WeekView";
