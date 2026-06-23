@@ -78,19 +78,18 @@ export default function WeekView({
               <div className="p-1 space-y-1">
                 {dayEvents.map((e) => {
                   const isMandatory = (e as any).is_mandatory;
-                  const isGoing = rsvpStatuses[e.id] === "going";
+                  const category = getCategory(e);
+                  const styles = categoryStyles[category];
 
                   return (
                     <button
                       key={e.id}
                       onClick={() => onEventClick(e)}
                       className={cn(
-                        "w-full text-left rounded p-1.5 text-xs transition-colors",
-                        isMandatory
-                          ? "bg-destructive/10 hover:bg-destructive/15 border border-destructive/20"
-                          : isGoing
-                          ? "bg-green-50 hover:bg-green-100 border border-green-200"
-                          : "bg-muted hover:bg-muted/80 border border-border",
+                        "w-full text-left rounded p-1.5 text-xs transition-colors border border-l-4 hover:opacity-90",
+                        styles.chip,
+                        styles.bar,
+                        isMandatory && "ring-1 ring-destructive/40",
                       )}
                     >
                       <div className="font-medium truncate">{e.title}</div>
