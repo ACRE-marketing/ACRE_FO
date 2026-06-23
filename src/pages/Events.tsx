@@ -267,7 +267,7 @@ export default function Events() {
   );
 }
 
-function EventQuickCard({ event, onClick, status, rsvpStatuses }: { event: any; onClick: () => void; status: string; rsvpStatuses: Record<string, string> }) {
+function EventQuickCard({ event, onClick, status, goingCount }: { event: any; onClick: () => void; status: string; goingCount: number }) {
   const isRegistered = status === "going" || status === "mandatory";
   const now = new Date();
   const startTime = new Date(event.start_time);
@@ -282,6 +282,7 @@ function EventQuickCard({ event, onClick, status, rsvpStatuses }: { event: any; 
   const deadline = event.rsvp_deadline ? new Date(event.rsvp_deadline) : null;
   const registrationClosed = deadline ? deadline < now : false;
   const capacity = event.capacity as number | null | undefined;
+  const isFull = typeof capacity === "number" && capacity > 0 && goingCount >= capacity;
 
   return (
     <button
@@ -310,8 +311,20 @@ function EventQuickCard({ event, onClick, status, rsvpStatuses }: { event: any; 
       {event.speaker && (
         <div className="text-xs text-muted-foreground mt-0.5">Speaker: {event.speaker}</div>
       )}
-      {category === "training" && typeof capacity === "number" && capacity > 0 && (
-        <CapacityBar eventId={event.id} capacity={capacity} rsvpStatuses={rsvpStatuses} />
+      {(event.lunch_included || (event.event_type === "training" && !event.is_online)) && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {event.lunch_included && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">Lunch included</span>
+          )}
+        </div>
+      )}
+      {typeof capacity === "number" && capacity > 0 && (
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+            <div className={`h-full ${isFull ? "bg-destructive" : styles.dot}`} style={{ width: `${Math.min(100, (goingCount / capacity) * 100)}%` }} />
+          </div>
+          <span className="text-[10px] text-muted-foreground tabular-nums">{goingCount} / {capacity}</span>
+        </div>
       )}
       {status === "mandatory" && event.is_online && event.meeting_link && isZoomWindowOpen && (
         <a
@@ -329,26 +342,15 @@ function EventQuickCard({ event, onClick, status, rsvpStatuses }: { event: any; 
           Meeting ended
         </span>
       )}
-      {event.external_rsvp_url && status === "pending" && !registrationClosed && (
+      {event.external_rsvp_url && status === "pending" && !registrationClosed && !isFull && (
         <div className="mt-1 text-xs text-amber-600 font-medium">External RSVP required</div>
       )}
       {registrationClosed && status === "pending" && (
         <div className="mt-1 text-xs text-muted-foreground font-medium">Registration closed</div>
       )}
+      {isFull && status === "pending" && !registrationClosed && (
+        <div className="mt-1 text-xs text-destructive font-medium">Full — Waitlist</div>
+      )}
     </button>
-  );
-}
-
-function CapacityBar({ eventId, capacity, rsvpStatuses }: { eventId: string; capacity: number; rsvpStatuses: Record<string, string> }) {
-  // Lightweight: re-use page-level allRsvps via context would be cleaner; for now keep visual only with my-rsvp signal omitted
-  // We just display capacity (count comes from parent in detail panel). Here we render capacity badge.
-  void rsvpStatuses; void eventId;
-  return (
-    <div className="mt-1.5 flex items-center gap-1.5">
-      <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
-        <div className="h-full bg-blue-500" style={{ width: `0%` }} />
-      </div>
-      <span className="text-[10px] text-muted-foreground tabular-nums">0 / {capacity}</span>
-    </div>
   );
 }
